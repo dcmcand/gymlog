@@ -28,6 +28,7 @@ import com.gymlog.app.ui.templates.EditTemplateScreen
 import com.gymlog.app.ui.templates.TemplateListScreen
 import com.gymlog.app.ui.progress.ExerciseProgressScreen
 import com.gymlog.app.ui.workout.ActiveWorkoutScreen
+import com.gymlog.app.ui.workout.TemplatePickerScreen
 
 data class BottomNavItem(val screen: Screen, val label: String, val icon: ImageVector)
 
@@ -109,8 +110,12 @@ fun GymLogNavigation() {
                 )
             }
             composable(Screen.TemplatePicker.route) {
-                // TODO: implement TemplatePicker screen (Task 10)
-                Text("Template Picker - Coming Soon")
+                TemplatePickerScreen(
+                    onTemplatePicked = { templateId ->
+                        navController.navigate(Screen.NewWorkout.createRoute(templateId))
+                    },
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             composable(
                 route = Screen.NewWorkout.route,
