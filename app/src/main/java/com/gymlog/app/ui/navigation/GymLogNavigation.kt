@@ -21,6 +21,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.gymlog.app.ui.exercises.ExerciseListScreen
+import com.gymlog.app.ui.templates.EditTemplateScreen
+import com.gymlog.app.ui.templates.TemplateListScreen
 
 data class BottomNavItem(val screen: Screen, val label: String, val icon: ImageVector)
 
@@ -67,7 +69,27 @@ fun GymLogNavigation() {
                 Text("Calendar - Coming Soon")
             }
             composable(Screen.Templates.route) {
-                Text("Templates - Coming Soon")
+                TemplateListScreen(
+                    onTemplateClick = { templateId ->
+                        navController.navigate(Screen.EditTemplate.createRoute(templateId))
+                    },
+                    onCreateClick = {
+                        navController.navigate(Screen.CreateTemplate.route)
+                    }
+                )
+            }
+            composable(Screen.CreateTemplate.route) {
+                EditTemplateScreen(
+                    templateId = null,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.EditTemplate.route) { backStackEntry ->
+                val templateId = backStackEntry.arguments?.getString("templateId")?.toLongOrNull()
+                EditTemplateScreen(
+                    templateId = templateId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             composable(Screen.Exercises.route) {
                 ExerciseListScreen(
