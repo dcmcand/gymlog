@@ -20,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.gymlog.app.ui.calendar.CalendarScreen
 import com.gymlog.app.ui.exercises.ExerciseListScreen
 import com.gymlog.app.ui.templates.EditTemplateScreen
 import com.gymlog.app.ui.templates.TemplateListScreen
@@ -66,7 +67,14 @@ fun GymLogNavigation() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Calendar.route) {
-                Text("Calendar - Coming Soon")
+                CalendarScreen(
+                    onNewWorkoutClick = {
+                        navController.navigate(Screen.TemplatePicker.route)
+                    },
+                    onResumeWorkout = { sessionId ->
+                        // TODO: navigate to active workout with session id
+                    }
+                )
             }
             composable(Screen.Templates.route) {
                 TemplateListScreen(
@@ -90,6 +98,10 @@ fun GymLogNavigation() {
                     templateId = templateId,
                     onNavigateBack = { navController.popBackStack() }
                 )
+            }
+            composable(Screen.TemplatePicker.route) {
+                // TODO: implement TemplatePicker screen (Task 10)
+                Text("Template Picker - Coming Soon")
             }
             composable(Screen.Exercises.route) {
                 ExerciseListScreen(
