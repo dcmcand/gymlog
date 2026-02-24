@@ -7,13 +7,18 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 @Database(
-    entities = [Exercise::class],
-    version = 1,
+    entities = [
+        Exercise::class,
+        WorkoutTemplate::class,
+        WorkoutTemplateExercise::class
+    ],
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class GymLogDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
+    abstract fun workoutTemplateDao(): WorkoutTemplateDao
 
     companion object {
         @Volatile
@@ -25,7 +30,7 @@ abstract class GymLogDatabase : RoomDatabase() {
                     context.applicationContext,
                     GymLogDatabase::class.java,
                     "gymlog_database"
-                ).build()
+                ).fallbackToDestructiveMigration(dropAllTables = true).build()
                 INSTANCE = instance
                 instance
             }
