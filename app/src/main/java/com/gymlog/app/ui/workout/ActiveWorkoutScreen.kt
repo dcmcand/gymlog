@@ -38,7 +38,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,11 +61,6 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 
-data class ExerciseWithSets(
-    val exercise: Exercise,
-    val sets: MutableList<ExerciseSet>
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
@@ -78,7 +72,7 @@ fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     var sessionId by remember { mutableStateOf<Long?>(null) }
-    val exercisesWithSets = remember { mutableStateListOf<ExerciseWithSets>() }
+    val workoutState = remember { ActiveWorkoutState() }
     var isLoading by remember { mutableStateOf(true) }
 
     // Initialize session and populate sets from template
@@ -126,7 +120,7 @@ fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
                 val insertedId = sessionDao.insertSet(set)
                 sets.add(set.copy(id = insertedId))
             }
-            exercisesWithSets.add(ExerciseWithSets(exercise, sets.toMutableList()))
+            workoutState.addExercise(exercise, sets)
         }
         isLoading = false
     }
@@ -176,28 +170,35 @@ fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
             return@Scaffold
         }
 
+        // Read version to subscribe to state changes
+        @Suppress("UNUSED_VARIABLE")
+        val stateVersion = workoutState.version
+
         LazyColumn(
             modifier = Modifier.padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(
-                items = exercisesWithSets,
-                key = { it.exercise.id }
-            ) { exerciseWithSets ->
+                items = workoutState.exercises,
+                key = { it.id }
+            ) { exercise ->
+                val sets = workoutState.getExerciseSets(exercise.id)
                 ExerciseCard(
-                    exerciseWithSets = exerciseWithSets,
-                    onSetUpdated = { index, updatedSet ->
-                        exerciseWithSets.sets[index] = updatedSet
+                    exercise = exercise,
+                    sets = sets,
+                    onSetUpdated = { setIndex, updatedSet ->
+                        workoutState.updateSet(exercise.id, setIndex, updatedSet)
                         scope.launch { sessionDao.updateSet(updatedSet) }
                     },
                     onAddSet = {
                         scope.launch {
-                            val lastSet = exerciseWithSets.sets.lastOrNull()
+                            val currentSets = workoutState.getExerciseSets(exercise.id)
+                            val lastSet = currentSets.lastOrNull()
                             val newSet = ExerciseSet(
                                 sessionId = sessionId!!,
-                                exerciseId = exerciseWithSets.exercise.id,
-                                setNumber = exerciseWithSets.sets.size + 1,
+                                exerciseId = exercise.id,
+                                setNumber = currentSets.size + 1,
                                 weightKg = lastSet?.weightKg,
                                 repsCompleted = lastSet?.repsCompleted,
                                 distanceM = lastSet?.distanceM,
@@ -205,7 +206,7 @@ fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
                                 status = SetStatus.PENDING
                             )
                             val insertedId = sessionDao.insertSet(newSet)
-                            exerciseWithSets.sets.add(newSet.copy(id = insertedId))
+                            workoutState.addSet(exercise.id, newSet.copy(id = insertedId))
                         }
                     }
                 )
@@ -216,20 +217,21 @@ fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
 
 @Composable
 private fun ExerciseCard(
-    exerciseWithSets: ExerciseWithSets,
+    exercise: Exercise,
+    sets: List<ExerciseSet>,
     onSetUpdated: (Int, ExerciseSet) -> Unit,
     onAddSet: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                exerciseWithSets.exercise.name,
+                exercise.name,
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            exerciseWithSets.sets.forEachIndexed { index, set ->
-                if (exerciseWithSets.exercise.type == ExerciseType.WEIGHT) {
+            sets.forEachIndexed { index, set ->
+                if (exercise.type == ExerciseType.WEIGHT) {
                     WeightSetRow(
                         set = set,
                         setIndex = index + 1,
@@ -242,7 +244,7 @@ private fun ExerciseCard(
                         onUpdate = { updated -> onSetUpdated(index, updated) }
                     )
                 }
-                if (index < exerciseWithSets.sets.size - 1) {
+                if (index < sets.size - 1) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 }
             }
