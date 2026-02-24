@@ -1,12 +1,28 @@
+# Built artifacts
 *.iml
-.gradle
-/local.properties
-/.idea
-.DS_Store
-/build
-/app/build
-/captures
-.externalNativeBuild
-.cxx
+*.apk
+*.ap_
+*.aab
+/build/
+/app/build/
+/captures/
+
+# Gradle
+.gradle/
 local.properties
+
+# IDE
+/.idea/
+*.iws
+*.ipr
+
+# Native
+.externalNativeBuild/
+.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
 CLAUDE.md
