@@ -22,4 +22,16 @@ class Converters {
 
     @TypeConverter
     fun toInstant(value: Long?): Instant? = value?.let { Instant.ofEpochMilli(it) }
+
+    @TypeConverter
+    fun fromSetStatus(value: SetStatus): String = value.name
+
+    @TypeConverter
+    fun toSetStatus(value: String): SetStatus = SetStatus.valueOf(value)
+
+    @TypeConverter
+    fun fromSessionStatus(value: SessionStatus): String = value.name
+
+    @TypeConverter
+    fun toSessionStatus(value: String): SessionStatus = SessionStatus.valueOf(value)
 }

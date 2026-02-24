@@ -10,15 +10,18 @@ import androidx.room.TypeConverters
     entities = [
         Exercise::class,
         WorkoutTemplate::class,
-        WorkoutTemplateExercise::class
+        WorkoutTemplateExercise::class,
+        WorkoutSession::class,
+        ExerciseSet::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class GymLogDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun workoutTemplateDao(): WorkoutTemplateDao
+    abstract fun workoutSessionDao(): WorkoutSessionDao
 
     companion object {
         @Volatile
