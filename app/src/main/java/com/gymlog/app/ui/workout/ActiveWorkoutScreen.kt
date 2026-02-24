@@ -45,8 +45,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.gymlog.app.data.Exercise
 import com.gymlog.app.data.ExerciseSet
@@ -255,6 +258,13 @@ private fun ExerciseCard(
 
 @Composable
 private fun WeightSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet) -> Unit) {
+    val weightText = set.weightKg?.let {
+        if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString()
+    } ?: ""
+    var weightFieldValue by remember(set.weightKg) {
+        mutableStateOf(TextFieldValue(weightText))
+    }
+
     Column {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -265,10 +275,27 @@ private fun WeightSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.width(40.dp)
             )
-            Text(
-                "${set.weightKg ?: 0.0} kg",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f)
+            OutlinedTextField(
+                value = weightFieldValue,
+                onValueChange = { newValue ->
+                    weightFieldValue = newValue
+                    val parsed = newValue.text.toDoubleOrNull()
+                    if (parsed != null || newValue.text.isEmpty()) {
+                        onUpdate(set.copy(weightKg = parsed))
+                    }
+                },
+                label = { Text("kg") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { focusState ->
+                        if (focusState.isFocused) {
+                            weightFieldValue = weightFieldValue.copy(
+                                selection = TextRange(0, weightFieldValue.text.length)
+                            )
+                        }
+                    },
+                singleLine = true
             )
             // Reps with +/- buttons
             IconButton(
