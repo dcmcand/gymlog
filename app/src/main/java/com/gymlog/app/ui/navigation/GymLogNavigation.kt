@@ -26,6 +26,7 @@ import com.gymlog.app.ui.calendar.CalendarScreen
 import com.gymlog.app.ui.exercises.ExerciseListScreen
 import com.gymlog.app.ui.templates.EditTemplateScreen
 import com.gymlog.app.ui.templates.TemplateListScreen
+import com.gymlog.app.ui.progress.ExerciseProgressScreen
 import com.gymlog.app.ui.workout.ActiveWorkoutScreen
 
 data class BottomNavItem(val screen: Screen, val label: String, val icon: ImageVector)
@@ -129,6 +130,17 @@ fun GymLogNavigation() {
                     onExerciseClick = { exerciseId ->
                         navController.navigate(Screen.ExerciseProgress.createRoute(exerciseId))
                     }
+                )
+            }
+            composable(
+                route = Screen.ExerciseProgress.route,
+                arguments = listOf(navArgument("exerciseId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val exerciseId = backStackEntry.arguments?.getString("exerciseId")?.toLongOrNull()
+                    ?: return@composable
+                ExerciseProgressScreen(
+                    exerciseId = exerciseId,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
         }
