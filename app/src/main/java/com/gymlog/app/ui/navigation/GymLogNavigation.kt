@@ -20,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.gymlog.app.ui.exercises.ExerciseListScreen
 
 data class BottomNavItem(val screen: Screen, val label: String, val icon: ImageVector)
 
@@ -69,7 +70,11 @@ fun GymLogNavigation() {
                 Text("Templates - Coming Soon")
             }
             composable(Screen.Exercises.route) {
-                Text("Exercises - Coming Soon")
+                ExerciseListScreen(
+                    onExerciseClick = { exerciseId ->
+                        navController.navigate(Screen.ExerciseProgress.createRoute(exerciseId))
+                    }
+                )
             }
         }
     }
