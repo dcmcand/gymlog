@@ -106,17 +106,22 @@ fun ActiveWorkoutScreen(
                 remainingSeconds--
             }
             // Vibrate when timer reaches zero
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vibratorManager = context.getSystemService(VibratorManager::class.java)
-                vibratorManager?.defaultVibrator?.vibrate(
-                    VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE)
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                val vibrator = context.getSystemService(Vibrator::class.java)
+            try {
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vibratorManager = context.getSystemService(VibratorManager::class.java)
+                    vibratorManager?.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Vibrator::class.java)
+                }
                 vibrator?.vibrate(
-                    VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE)
+                    VibrationEffect.createWaveform(
+                        longArrayOf(0, 300, 200, 300),
+                        -1
+                    )
                 )
+            } catch (_: Exception) {
+                // Vibration not available
             }
             // Brief "Rest Complete" display, then auto-hide
             delay(2000L)
