@@ -170,10 +170,6 @@ fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
             return@Scaffold
         }
 
-        // Read version to subscribe to state changes
-        @Suppress("UNUSED_VARIABLE")
-        val stateVersion = workoutState.version
-
         LazyColumn(
             modifier = Modifier.padding(padding),
             contentPadding = PaddingValues(16.dp),
@@ -184,6 +180,7 @@ fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
                 key = { it.id }
             ) { exercise ->
                 val sets = workoutState.getExerciseSets(exercise.id)
+                    ?: return@items
                 ExerciseCard(
                     exercise = exercise,
                     sets = sets,
@@ -193,7 +190,7 @@ fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
                     },
                     onAddSet = {
                         scope.launch {
-                            val currentSets = workoutState.getExerciseSets(exercise.id)
+                            val currentSets = workoutState.getExerciseSetsCopy(exercise.id)
                             val lastSet = currentSets.lastOrNull()
                             val newSet = ExerciseSet(
                                 sessionId = sessionId!!,
@@ -335,17 +332,43 @@ private fun WeightSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet
             )
         }
 
-        // Weight increment chips
-        WeightIncrementChips(
-            onIncrement = { inc ->
-                val newWeight = (set.weightKg ?: 0.0) + inc
-                onUpdate(set.copy(weightKg = newWeight))
-            },
-            onDecrement = { dec ->
-                val newWeight = ((set.weightKg ?: 0.0) - dec).coerceAtLeast(0.0)
-                onUpdate(set.copy(weightKg = newWeight))
+        // Weight +/- 2.5 kg buttons
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(start = 40.dp, top = 4.dp)
+        ) {
+            IconButton(
+                onClick = {
+                    val newWeight = ((set.weightKg ?: 0.0) - 2.5).coerceAtLeast(0.0)
+                    onUpdate(set.copy(weightKg = newWeight))
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Remove,
+                    contentDescription = "Decrease weight by 2.5 kg",
+                    modifier = Modifier.size(16.dp)
+                )
             }
-        )
+            Text(
+                "2.5 kg",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.align(Alignment.CenterVertically)
+            )
+            IconButton(
+                onClick = {
+                    val newWeight = (set.weightKg ?: 0.0) + 2.5
+                    onUpdate(set.copy(weightKg = newWeight))
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Increase weight by 2.5 kg",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
 

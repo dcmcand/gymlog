@@ -55,55 +55,55 @@ class ActiveWorkoutStateTest {
 
     @Test
     fun `updating set status returns new snapshot with change applied`() {
-        val original = state.getExerciseSets(squat.id)
+        val original = state.getExerciseSets(squat.id)!!
         val updated = original[0].copy(status = SetStatus.COMPLETED)
 
         state.updateSet(squat.id, 0, updated)
 
-        val afterUpdate = state.getExerciseSets(squat.id)
+        val afterUpdate = state.getExerciseSets(squat.id)!!
         assertEquals(SetStatus.COMPLETED, afterUpdate[0].status)
     }
 
     @Test
     fun `updating set status does not affect other sets`() {
-        val original = state.getExerciseSets(squat.id)
+        val original = state.getExerciseSets(squat.id)!!
         val updated = original[0].copy(status = SetStatus.FAILED)
 
         state.updateSet(squat.id, 0, updated)
 
-        val afterUpdate = state.getExerciseSets(squat.id)
+        val afterUpdate = state.getExerciseSets(squat.id)!!
         assertEquals(SetStatus.PENDING, afterUpdate[1].status)
     }
 
     @Test
     fun `updating weight returns new snapshot with weight changed`() {
-        val original = state.getExerciseSets(squat.id)
+        val original = state.getExerciseSets(squat.id)!!
         val updated = original[0].copy(weightKg = 65.0)
 
         state.updateSet(squat.id, 0, updated)
 
-        val afterUpdate = state.getExerciseSets(squat.id)
+        val afterUpdate = state.getExerciseSets(squat.id)!!
         assertEquals(65.0, afterUpdate[0].weightKg!!, 0.01)
     }
 
     @Test
     fun `updating reps returns new snapshot with reps changed`() {
-        val original = state.getExerciseSets(squat.id)
+        val original = state.getExerciseSets(squat.id)!!
         val updated = original[0].copy(repsCompleted = 10)
 
         state.updateSet(squat.id, 0, updated)
 
-        val afterUpdate = state.getExerciseSets(squat.id)
+        val afterUpdate = state.getExerciseSets(squat.id)!!
         assertEquals(10, afterUpdate[0].repsCompleted)
     }
 
     @Test
     fun `adding a set increases set count`() {
-        val countBefore = state.getExerciseSets(squat.id).size
+        val countBefore = state.getExerciseSets(squat.id)!!.size
 
         state.addSet(squat.id, weightSet(10L, 1L, 3, 60.0, 8))
 
-        val countAfter = state.getExerciseSets(squat.id).size
+        val countAfter = state.getExerciseSets(squat.id)!!.size
         assertEquals(countBefore + 1, countAfter)
     }
 
@@ -111,7 +111,7 @@ class ActiveWorkoutStateTest {
     fun `state version increments on update`() {
         val versionBefore = state.version
 
-        val sets = state.getExerciseSets(squat.id)
+        val sets = state.getExerciseSets(squat.id)!!
         state.updateSet(squat.id, 0, sets[0].copy(status = SetStatus.COMPLETED))
 
         assertEquals(versionBefore + 1, state.version)
