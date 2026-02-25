@@ -56,12 +56,12 @@ class ActiveWorkoutStateTest {
     @Test
     fun `updating set status returns new snapshot with change applied`() {
         val original = state.getExerciseSets(squat.id)!!
-        val updated = original[0].copy(status = SetStatus.COMPLETED)
+        val updated = original[0].copy(status = SetStatus.EASY)
 
         state.updateSet(squat.id, 0, updated)
 
         val afterUpdate = state.getExerciseSets(squat.id)!!
-        assertEquals(SetStatus.COMPLETED, afterUpdate[0].status)
+        assertEquals(SetStatus.EASY, afterUpdate[0].status)
     }
 
     @Test
@@ -112,7 +112,7 @@ class ActiveWorkoutStateTest {
         val versionBefore = state.version
 
         val sets = state.getExerciseSets(squat.id)!!
-        state.updateSet(squat.id, 0, sets[0].copy(status = SetStatus.COMPLETED))
+        state.updateSet(squat.id, 0, sets[0].copy(status = SetStatus.EASY))
 
         assertEquals(versionBefore + 1, state.version)
     }

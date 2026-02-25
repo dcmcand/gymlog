@@ -21,10 +21,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -518,20 +519,28 @@ private fun CardioSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet
 private fun SetStatusButtons(status: SetStatus, onStatusChange: (SetStatus) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         StatusChip(
-            selected = status == SetStatus.COMPLETED,
-            onClick = { onStatusChange(SetStatus.COMPLETED) },
-            icon = Icons.Default.Check,
-            label = "Done",
+            selected = status == SetStatus.EASY,
+            onClick = { onStatusChange(SetStatus.EASY) },
+            icon = Icons.Default.ThumbUp,
+            label = "Easy",
             selectedColor = MaterialTheme.colorScheme.primary,
             selectedContentColor = MaterialTheme.colorScheme.onPrimary
+        )
+        StatusChip(
+            selected = status == SetStatus.HARD,
+            onClick = { onStatusChange(SetStatus.HARD) },
+            icon = Icons.Default.Whatshot,
+            label = "Hard",
+            selectedColor = MaterialTheme.colorScheme.tertiary,
+            selectedContentColor = MaterialTheme.colorScheme.onTertiary
         )
         StatusChip(
             selected = status == SetStatus.PARTIAL,
             onClick = { onStatusChange(SetStatus.PARTIAL) },
             icon = Icons.Default.Remove,
             label = "Partial",
-            selectedColor = MaterialTheme.colorScheme.tertiary,
-            selectedContentColor = MaterialTheme.colorScheme.onTertiary
+            selectedColor = MaterialTheme.colorScheme.secondary,
+            selectedContentColor = MaterialTheme.colorScheme.onSecondary
         )
         StatusChip(
             selected = status == SetStatus.FAILED,

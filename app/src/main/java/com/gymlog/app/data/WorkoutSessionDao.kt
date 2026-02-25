@@ -61,7 +61,7 @@ interface WorkoutSessionDao {
         SELECT MAX(es.weightKg) as maxWeight, ws.date
         FROM exercise_sets es
         INNER JOIN workout_sessions ws ON es.sessionId = ws.id
-        WHERE es.exerciseId = :exerciseId AND es.status = 'COMPLETED' AND es.weightKg IS NOT NULL
+        WHERE es.exerciseId = :exerciseId AND es.status IN ('EASY', 'HARD') AND es.weightKg IS NOT NULL
         GROUP BY ws.date
         ORDER BY ws.date ASC
     """)
@@ -71,7 +71,7 @@ interface WorkoutSessionDao {
         SELECT MAX(es.distanceM) as maxDistance, es.durationSec as minDuration, ws.date
         FROM exercise_sets es
         INNER JOIN workout_sessions ws ON es.sessionId = ws.id
-        WHERE es.exerciseId = :exerciseId AND es.status = 'COMPLETED' AND es.distanceM IS NOT NULL
+        WHERE es.exerciseId = :exerciseId AND es.status IN ('EASY', 'HARD') AND es.distanceM IS NOT NULL
         GROUP BY ws.date
         ORDER BY ws.date ASC
     """)

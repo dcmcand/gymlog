@@ -15,10 +15,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -308,16 +309,22 @@ private fun CardioSetDetailRow(set: ExerciseSet) {
 @Composable
 private fun SetStatusIcon(status: SetStatus, modifier: Modifier = Modifier) {
     when (status) {
-        SetStatus.COMPLETED -> Icon(
-            Icons.Default.Check,
-            contentDescription = "Completed",
+        SetStatus.EASY -> Icon(
+            Icons.Default.ThumbUp,
+            contentDescription = "Easy",
             tint = MaterialTheme.colorScheme.primary,
+            modifier = modifier
+        )
+        SetStatus.HARD -> Icon(
+            Icons.Default.Whatshot,
+            contentDescription = "Hard",
+            tint = MaterialTheme.colorScheme.tertiary,
             modifier = modifier
         )
         SetStatus.PARTIAL -> Icon(
             Icons.Default.Remove,
             contentDescription = "Partial",
-            tint = MaterialTheme.colorScheme.tertiary,
+            tint = MaterialTheme.colorScheme.secondary,
             modifier = modifier
         )
         SetStatus.FAILED -> Icon(

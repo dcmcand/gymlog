@@ -15,7 +15,7 @@ class WorkoutDetailHelperTest {
         reps: Int? = null,
         distance: Int? = null,
         duration: Int? = null,
-        status: SetStatus = SetStatus.COMPLETED
+        status: SetStatus = SetStatus.EASY
     ) = ExerciseSet(
         id = 0L,
         sessionId = 1L,

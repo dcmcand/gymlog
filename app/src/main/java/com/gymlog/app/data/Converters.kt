@@ -27,7 +27,11 @@ class Converters {
     fun fromSetStatus(value: SetStatus): String = value.name
 
     @TypeConverter
-    fun toSetStatus(value: String): SetStatus = SetStatus.valueOf(value)
+    fun toSetStatus(value: String): SetStatus = try {
+        SetStatus.valueOf(value)
+    } catch (_: IllegalArgumentException) {
+        SetStatus.EASY
+    }
 
     @TypeConverter
     fun fromSessionStatus(value: SessionStatus): String = value.name

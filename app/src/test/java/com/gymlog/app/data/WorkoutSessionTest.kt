@@ -14,8 +14,8 @@ class WorkoutSessionTest {
     }
 
     @Test
-    fun `set status has PENDING, COMPLETED, PARTIAL, FAILED`() {
-        assertEquals(4, SetStatus.entries.size)
+    fun `set status has PENDING, EASY, HARD, PARTIAL, FAILED`() {
+        assertEquals(5, SetStatus.entries.size)
     }
 
     @Test
@@ -42,11 +42,11 @@ class WorkoutSessionTest {
             setNumber = 1,
             weightKg = 100.0,
             repsCompleted = 8,
-            status = SetStatus.COMPLETED
+            status = SetStatus.EASY
         )
         assertEquals(100.0, set.weightKg!!, 0.01)
         assertEquals(8, set.repsCompleted)
-        assertEquals(SetStatus.COMPLETED, set.status)
+        assertEquals(SetStatus.EASY, set.status)
         assertNull(set.distanceM)
         assertNull(set.durationSec)
     }
@@ -59,7 +59,7 @@ class WorkoutSessionTest {
             setNumber = 1,
             distanceM = 2000,
             durationSec = 480,
-            status = SetStatus.COMPLETED
+            status = SetStatus.EASY
         )
         assertEquals(2000, set.distanceM)
         assertEquals(480, set.durationSec)
