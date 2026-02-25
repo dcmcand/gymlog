@@ -19,7 +19,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,7 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -45,6 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,7 +66,12 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
+fun ActiveWorkoutScreen(
+    templateId: Long? = null,
+    resumeSessionId: Long? = null,
+    onFinish: () -> Unit,
+    onDelete: () -> Unit = onFinish
+) {
     val context = LocalContext.current
     val db = remember { GymLogDatabase.getDatabase(context) }
     val sessionDao = db.workoutSessionDao()
@@ -74,60 +82,100 @@ fun ActiveWorkoutScreen(templateId: Long, onFinish: () -> Unit) {
     var sessionId by remember { mutableStateOf<Long?>(null) }
     val workoutState = remember { ActiveWorkoutState() }
     var isLoading by remember { mutableStateOf(true) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Initialize session and populate sets from template
-    LaunchedEffect(templateId) {
-        val template = templateDao.getById(templateId) ?: return@LaunchedEffect
-        val templateExercises = templateDao.getExercisesForTemplate(templateId)
-
-        // Create a new IN_PROGRESS session
-        val newSessionId = sessionDao.insert(
-            WorkoutSession(
-                templateId = templateId,
-                date = LocalDate.now(),
-                status = SessionStatus.IN_PROGRESS,
-                startedAt = Instant.now()
-            )
-        )
-        sessionId = newSessionId
-
-        // Create sets for each exercise based on template defaults
-        for (te in templateExercises) {
-            val exercise = exerciseDao.getById(te.exerciseId) ?: continue
-            val lastSet = sessionDao.getLastCompletedSet(te.exerciseId)
-
-            val sets = mutableListOf<ExerciseSet>()
-            for (setNum in 1..te.targetSets) {
-                val set = if (exercise.type == ExerciseType.WEIGHT) {
-                    ExerciseSet(
-                        sessionId = newSessionId,
-                        exerciseId = exercise.id,
-                        setNumber = setNum,
-                        weightKg = lastSet?.weightKg ?: te.targetWeightKg,
-                        repsCompleted = te.targetReps,
-                        status = SetStatus.PENDING
-                    )
-                } else {
-                    ExerciseSet(
-                        sessionId = newSessionId,
-                        exerciseId = exercise.id,
-                        setNumber = setNum,
-                        distanceM = lastSet?.distanceM ?: te.targetDistanceM,
-                        durationSec = lastSet?.durationSec ?: te.targetDurationSec,
-                        status = SetStatus.PENDING
-                    )
-                }
-                val insertedId = sessionDao.insertSet(set)
-                sets.add(set.copy(id = insertedId))
+    // Initialize: either resume existing session or create new from template
+    LaunchedEffect(templateId, resumeSessionId) {
+        if (resumeSessionId != null) {
+            // Resume existing session
+            sessionId = resumeSessionId
+            val sets = sessionDao.getSetsForSession(resumeSessionId)
+            val exerciseIds = sets.map { it.exerciseId }.distinct()
+            for (eid in exerciseIds) {
+                val exercise = exerciseDao.getById(eid) ?: continue
+                val exerciseSets = sets.filter { it.exerciseId == eid }
+                workoutState.addExercise(exercise, exerciseSets)
             }
-            workoutState.addExercise(exercise, sets)
+            isLoading = false
+        } else if (templateId != null) {
+            // Create new session from template
+            val template = templateDao.getById(templateId) ?: return@LaunchedEffect
+            val templateExercises = templateDao.getExercisesForTemplate(templateId)
+
+            val newSessionId = sessionDao.insert(
+                WorkoutSession(
+                    templateId = templateId,
+                    date = LocalDate.now(),
+                    status = SessionStatus.IN_PROGRESS,
+                    startedAt = Instant.now()
+                )
+            )
+            sessionId = newSessionId
+
+            for (te in templateExercises) {
+                val exercise = exerciseDao.getById(te.exerciseId) ?: continue
+                val lastSet = sessionDao.getLastCompletedSet(te.exerciseId)
+
+                val sets = mutableListOf<ExerciseSet>()
+                for (setNum in 1..te.targetSets) {
+                    val set = if (exercise.type == ExerciseType.WEIGHT) {
+                        ExerciseSet(
+                            sessionId = newSessionId,
+                            exerciseId = exercise.id,
+                            setNumber = setNum,
+                            weightKg = lastSet?.weightKg ?: te.targetWeightKg,
+                            repsCompleted = te.targetReps,
+                            status = SetStatus.PENDING
+                        )
+                    } else {
+                        ExerciseSet(
+                            sessionId = newSessionId,
+                            exerciseId = exercise.id,
+                            setNumber = setNum,
+                            distanceM = lastSet?.distanceM ?: te.targetDistanceM,
+                            durationSec = lastSet?.durationSec ?: te.targetDurationSec,
+                            status = SetStatus.PENDING
+                        )
+                    }
+                    val insertedId = sessionDao.insertSet(set)
+                    sets.add(set.copy(id = insertedId))
+                }
+                workoutState.addExercise(exercise, sets)
+            }
+            isLoading = false
         }
-        isLoading = false
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete workout?") },
+            text = { Text("This will permanently delete this workout and all its sets.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    scope.launch {
+                        sessionId?.let { sessionDao.deleteById(it) }
+                        onDelete()
+                    }
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Active Workout") })
+            TopAppBar(
+                title = { Text("Active Workout") },
+                actions = {
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete workout")
+                    }
+                }
+            )
         },
         bottomBar = {
             Surface(tonalElevation = 3.dp) {
@@ -410,53 +458,58 @@ private fun CardioSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet
 @Composable
 private fun SetStatusButtons(status: SetStatus, onStatusChange: (SetStatus) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        IconButton(
+        StatusChip(
+            selected = status == SetStatus.COMPLETED,
             onClick = { onStatusChange(SetStatus.COMPLETED) },
-            modifier = Modifier.size(32.dp),
-            colors = IconButtonDefaults.iconButtonColors(
-                contentColor = if (status == SetStatus.COMPLETED)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        ) {
-            Icon(
-                Icons.Default.Check,
-                contentDescription = "Completed",
-                modifier = Modifier.size(18.dp)
-            )
-        }
-        IconButton(
+            icon = Icons.Default.Check,
+            label = "Done",
+            selectedColor = MaterialTheme.colorScheme.primary,
+            selectedContentColor = MaterialTheme.colorScheme.onPrimary
+        )
+        StatusChip(
+            selected = status == SetStatus.PARTIAL,
             onClick = { onStatusChange(SetStatus.PARTIAL) },
-            modifier = Modifier.size(32.dp),
-            colors = IconButtonDefaults.iconButtonColors(
-                contentColor = if (status == SetStatus.PARTIAL)
-                    MaterialTheme.colorScheme.tertiary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        ) {
-            Icon(
-                Icons.Default.Remove,
-                contentDescription = "Partial",
-                modifier = Modifier.size(18.dp)
-            )
-        }
-        IconButton(
+            icon = Icons.Default.Remove,
+            label = "Partial",
+            selectedColor = MaterialTheme.colorScheme.tertiary,
+            selectedContentColor = MaterialTheme.colorScheme.onTertiary
+        )
+        StatusChip(
+            selected = status == SetStatus.FAILED,
             onClick = { onStatusChange(SetStatus.FAILED) },
-            modifier = Modifier.size(32.dp),
-            colors = IconButtonDefaults.iconButtonColors(
-                contentColor = if (status == SetStatus.FAILED)
-                    MaterialTheme.colorScheme.error
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            icon = Icons.Default.Close,
+            label = "Fail",
+            selectedColor = MaterialTheme.colorScheme.error,
+            selectedContentColor = MaterialTheme.colorScheme.onError
+        )
+    }
+}
+
+@Composable
+private fun StatusChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String,
+    selectedColor: Color,
+    selectedContentColor: Color
+) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.small,
+        color = if (selected) selectedColor else Color.Transparent,
+        contentColor = if (selected) selectedContentColor
+            else MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "Failed",
-                modifier = Modifier.size(18.dp)
-            )
+            Icon(icon, contentDescription = label, modifier = Modifier.size(14.dp))
+            if (selected) {
+                Text(label, style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
 }

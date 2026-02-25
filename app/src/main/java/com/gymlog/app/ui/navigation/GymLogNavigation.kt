@@ -83,7 +83,7 @@ fun GymLogNavigation() {
                         navController.navigate(Screen.TemplatePicker.route)
                     },
                     onResumeWorkout = { sessionId ->
-                        // TODO: navigate to active workout with session id
+                        navController.navigate(Screen.ResumeWorkout.createRoute(sessionId))
                     },
                     onWorkoutClick = { sessionId ->
                         navController.navigate(Screen.WorkoutDetail.createRoute(sessionId))
@@ -129,6 +129,19 @@ fun GymLogNavigation() {
                     ?: return@composable
                 ActiveWorkoutScreen(
                     templateId = templateId,
+                    onFinish = {
+                        navController.popBackStack(Screen.Calendar.route, inclusive = false)
+                    }
+                )
+            }
+            composable(
+                route = Screen.ResumeWorkout.route,
+                arguments = listOf(navArgument("sessionId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val sessionId = backStackEntry.arguments?.getString("sessionId")?.toLongOrNull()
+                    ?: return@composable
+                ActiveWorkoutScreen(
+                    resumeSessionId = sessionId,
                     onFinish = {
                         navController.popBackStack(Screen.Calendar.route, inclusive = false)
                     }

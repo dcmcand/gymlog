@@ -17,7 +17,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -26,12 +28,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,21 +47,28 @@ import com.gymlog.app.data.ExerciseType
 import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.SetStatus
 import com.gymlog.app.data.WorkoutSession
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkoutDetailScreen(sessionId: Long, onNavigateBack: () -> Unit) {
+fun WorkoutDetailScreen(
+    sessionId: Long,
+    onNavigateBack: () -> Unit,
+    onDelete: () -> Unit = onNavigateBack
+) {
     val context = LocalContext.current
     val db = remember { GymLogDatabase.getDatabase(context) }
     val sessionDao = db.workoutSessionDao()
     val exerciseDao = db.exerciseDao()
     val templateDao = db.workoutTemplateDao()
 
+    val scope = rememberCoroutineScope()
     var session by remember { mutableStateOf<WorkoutSession?>(null) }
     var templateName by remember { mutableStateOf<String?>(null) }
     var exerciseGroups by remember {
         mutableStateOf<List<Pair<Exercise, List<ExerciseSet>>>>(emptyList())
     }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(sessionId) {
         val s = sessionDao.getById(sessionId) ?: return@LaunchedEffect
@@ -72,6 +83,26 @@ fun WorkoutDetailScreen(sessionId: Long, onNavigateBack: () -> Unit) {
         }
     }
 
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete workout?") },
+            text = { Text("This will permanently delete this workout and all its sets.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    scope.launch {
+                        sessionDao.deleteById(sessionId)
+                        onDelete()
+                    }
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -82,6 +113,11 @@ fun WorkoutDetailScreen(sessionId: Long, onNavigateBack: () -> Unit) {
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete workout")
                     }
                 }
             )
@@ -147,9 +183,9 @@ private fun ExerciseDetailCard(exercise: Exercise, sets: List<ExerciseSet>) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Set",
+                        "#",
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.width(36.dp),
+                        modifier = Modifier.width(28.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
@@ -161,15 +197,10 @@ private fun ExerciseDetailCard(exercise: Exercise, sets: List<ExerciseSet>) {
                     Text(
                         "Reps",
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.width(48.dp),
+                        modifier = Modifier.width(40.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
-                        "Status",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.width(32.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(modifier = Modifier.width(24.dp))
                 }
             } else {
                 Row(
@@ -179,9 +210,9 @@ private fun ExerciseDetailCard(exercise: Exercise, sets: List<ExerciseSet>) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Set",
+                        "#",
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.width(36.dp),
+                        modifier = Modifier.width(28.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
@@ -196,12 +227,7 @@ private fun ExerciseDetailCard(exercise: Exercise, sets: List<ExerciseSet>) {
                         modifier = Modifier.weight(1f),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
-                        "Status",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.width(32.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(modifier = Modifier.width(24.dp))
                 }
             }
 
@@ -230,7 +256,7 @@ private fun WeightSetDetailRow(set: ExerciseSet) {
         Text(
             "${set.setNumber}",
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.width(36.dp)
+            modifier = Modifier.width(28.dp)
         )
         Text(
             "${set.weightKg ?: "-"} kg",
@@ -240,11 +266,11 @@ private fun WeightSetDetailRow(set: ExerciseSet) {
         Text(
             "${set.repsCompleted ?: "-"}",
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.width(48.dp)
+            modifier = Modifier.width(40.dp)
         )
         SetStatusIcon(
             status = set.status,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(24.dp)
         )
     }
 }
@@ -260,7 +286,7 @@ private fun CardioSetDetailRow(set: ExerciseSet) {
         Text(
             "${set.setNumber}",
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.width(36.dp)
+            modifier = Modifier.width(28.dp)
         )
         Text(
             "${set.distanceM ?: "-"} m",
@@ -274,7 +300,7 @@ private fun CardioSetDetailRow(set: ExerciseSet) {
         )
         SetStatusIcon(
             status = set.status,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(24.dp)
         )
     }
 }

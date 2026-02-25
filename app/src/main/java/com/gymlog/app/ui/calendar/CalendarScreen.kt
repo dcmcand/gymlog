@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gymlog.app.data.GymLogDatabase
+import com.gymlog.app.data.SessionStatus
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -57,7 +58,8 @@ data class SessionSummary(
     val sessionId: Long,
     val templateName: String,
     val exerciseCount: Int,
-    val status: String
+    val status: String,
+    val isInProgress: Boolean
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -216,7 +218,8 @@ fun CalendarScreen(
                                                         sessionId = session.id,
                                                         templateName = templateName,
                                                         exerciseCount = exerciseCount,
-                                                        status = statusLabel
+                                                        status = statusLabel,
+                                                        isInProgress = session.status == SessionStatus.IN_PROGRESS
                                                     )
                                                 }
                                             }
@@ -271,7 +274,13 @@ fun CalendarScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
-                            .clickable { onWorkoutClick(summary.sessionId) }
+                            .clickable {
+                                if (summary.isInProgress) {
+                                    onResumeWorkout(summary.sessionId)
+                                } else {
+                                    onWorkoutClick(summary.sessionId)
+                                }
+                            }
                     ) {
                         Row(
                             modifier = Modifier
