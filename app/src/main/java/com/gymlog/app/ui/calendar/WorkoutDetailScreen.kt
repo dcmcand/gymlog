@@ -61,11 +61,11 @@ fun WorkoutDetailScreen(
     val db = remember { GymLogDatabase.getDatabase(context) }
     val sessionDao = db.workoutSessionDao()
     val exerciseDao = db.exerciseDao()
-    val templateDao = db.workoutTemplateDao()
+    val workoutDao = db.workoutDao()
 
     val scope = rememberCoroutineScope()
     var session by remember { mutableStateOf<WorkoutSession?>(null) }
-    var templateName by remember { mutableStateOf<String?>(null) }
+    var workoutName by remember { mutableStateOf<String?>(null) }
     var exerciseGroups by remember {
         mutableStateOf<List<Pair<Exercise, List<ExerciseSet>>>>(emptyList())
     }
@@ -74,7 +74,7 @@ fun WorkoutDetailScreen(
     LaunchedEffect(sessionId) {
         val s = sessionDao.getById(sessionId) ?: return@LaunchedEffect
         session = s
-        templateName = s.templateId?.let { templateDao.getById(it)?.name }
+        workoutName = s.workoutId?.let { workoutDao.getById(it)?.name }
 
         val sets = sessionDao.getSetsForSession(sessionId)
         val grouped = groupSetsByExercise(sets)
@@ -138,7 +138,7 @@ fun WorkoutDetailScreen(
             item {
                 Column {
                     Text(
-                        text = templateName ?: "Workout",
+                        text = workoutName ?: "Workout",
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(modifier = Modifier.height(4.dp))

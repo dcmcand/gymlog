@@ -76,7 +76,7 @@ import java.time.LocalDate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveWorkoutScreen(
-    templateId: Long? = null,
+    workoutId: Long? = null,
     resumeSessionId: Long? = null,
     onFinish: () -> Unit,
     onDelete: () -> Unit = onFinish
@@ -84,7 +84,7 @@ fun ActiveWorkoutScreen(
     val context = LocalContext.current
     val db = remember { GymLogDatabase.getDatabase(context) }
     val sessionDao = db.workoutSessionDao()
-    val templateDao = db.workoutTemplateDao()
+    val workoutDao = db.workoutDao()
     val exerciseDao = db.exerciseDao()
     val scope = rememberCoroutineScope()
 
@@ -125,8 +125,8 @@ fun ActiveWorkoutScreen(
         }
     }
 
-    // Initialize: either resume existing session or create new from template
-    LaunchedEffect(templateId, resumeSessionId) {
+    // Initialize: either resume existing session or create new from workout
+    LaunchedEffect(workoutId, resumeSessionId) {
         if (resumeSessionId != null) {
             // Resume existing session
             sessionId = resumeSessionId
@@ -138,14 +138,14 @@ fun ActiveWorkoutScreen(
                 workoutState.addExercise(exercise, exerciseSets)
             }
             isLoading = false
-        } else if (templateId != null) {
-            // Create new session from template
-            val template = templateDao.getById(templateId) ?: return@LaunchedEffect
-            val templateExercises = templateDao.getExercisesForTemplate(templateId)
+        } else if (workoutId != null) {
+            // Create new session from workout
+            val workout = workoutDao.getById(workoutId) ?: return@LaunchedEffect
+            val workoutExercises = workoutDao.getExercisesForWorkout(workoutId)
 
             val newSessionId = sessionDao.insert(
                 WorkoutSession(
-                    templateId = templateId,
+                    workoutId = workoutId,
                     date = LocalDate.now(),
                     status = SessionStatus.IN_PROGRESS,
                     startedAt = Instant.now()
@@ -153,7 +153,7 @@ fun ActiveWorkoutScreen(
             )
             sessionId = newSessionId
 
-            for (te in templateExercises) {
+            for (te in workoutExercises) {
                 val exercise = exerciseDao.getById(te.exerciseId) ?: continue
                 val lastSet = sessionDao.getLastCompletedSet(te.exerciseId)
 

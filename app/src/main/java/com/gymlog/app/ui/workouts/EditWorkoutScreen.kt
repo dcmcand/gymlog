@@ -1,4 +1,4 @@
-package com.gymlog.app.ui.templates
+package com.gymlog.app.ui.workouts
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,11 +44,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.gymlog.app.data.ExerciseType
 import com.gymlog.app.data.GymLogDatabase
-import com.gymlog.app.data.WorkoutTemplate
-import com.gymlog.app.data.WorkoutTemplateExercise
+import com.gymlog.app.data.Workout
+import com.gymlog.app.data.WorkoutExercise
 import kotlinx.coroutines.launch
 
-data class TemplateExerciseEntry(
+data class WorkoutExerciseEntry(
     val exerciseId: Long,
     val exerciseName: String,
     val exerciseType: ExerciseType,
@@ -61,40 +61,40 @@ data class TemplateExerciseEntry(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditTemplateScreen(templateId: Long?, onNavigateBack: () -> Unit) {
+fun EditWorkoutScreen(workoutId: Long?, onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val db = remember { GymLogDatabase.getDatabase(context) }
-    val templateDao = db.workoutTemplateDao()
+    val workoutDao = db.workoutDao()
     val exerciseDao = db.exerciseDao()
     val scope = rememberCoroutineScope()
 
-    var templateName by remember { mutableStateOf("") }
-    val exerciseEntries = remember { mutableStateListOf<TemplateExerciseEntry>() }
+    var workoutName by remember { mutableStateOf("") }
+    val exerciseEntries = remember { mutableStateListOf<WorkoutExerciseEntry>() }
     var showExercisePicker by remember { mutableStateOf(false) }
     val allExercises by exerciseDao.getAll().collectAsState(initial = emptyList())
-    var isLoaded by remember { mutableStateOf(templateId == null || templateId == 0L) }
+    var isLoaded by remember { mutableStateOf(workoutId == null || workoutId == 0L) }
 
-    // Load existing template if editing
-    LaunchedEffect(templateId) {
-        if (templateId != null && templateId != 0L) {
-            val template = templateDao.getById(templateId)
-            if (template != null) {
-                templateName = template.name
-                val templateExercises = templateDao.getExercisesForTemplate(templateId)
+    // Load existing workout if editing
+    LaunchedEffect(workoutId) {
+        if (workoutId != null && workoutId != 0L) {
+            val workout = workoutDao.getById(workoutId)
+            if (workout != null) {
+                workoutName = workout.name
+                val workoutExercises = workoutDao.getExercisesForWorkout(workoutId)
                 exerciseEntries.clear()
-                for (te in templateExercises) {
-                    val exercise = exerciseDao.getById(te.exerciseId)
+                for (we in workoutExercises) {
+                    val exercise = exerciseDao.getById(we.exerciseId)
                     if (exercise != null) {
                         exerciseEntries.add(
-                            TemplateExerciseEntry(
+                            WorkoutExerciseEntry(
                                 exerciseId = exercise.id,
                                 exerciseName = exercise.name,
                                 exerciseType = exercise.type,
-                                targetSets = te.targetSets,
-                                targetReps = te.targetReps,
-                                targetWeightKg = te.targetWeightKg,
-                                targetDistanceM = te.targetDistanceM,
-                                targetDurationSec = te.targetDurationSec
+                                targetSets = we.targetSets,
+                                targetReps = we.targetReps,
+                                targetWeightKg = we.targetWeightKg,
+                                targetDistanceM = we.targetDistanceM,
+                                targetDurationSec = we.targetDurationSec
                             )
                         )
                     }
@@ -104,12 +104,12 @@ fun EditTemplateScreen(templateId: Long?, onNavigateBack: () -> Unit) {
         }
     }
 
-    val isEditing = templateId != null && templateId != 0L
+    val isEditing = workoutId != null && workoutId != 0L
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isEditing) "Edit Template" else "New Template") },
+                title = { Text(if (isEditing) "Edit Workout" else "New Workout") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -120,23 +120,23 @@ fun EditTemplateScreen(templateId: Long?, onNavigateBack: () -> Unit) {
                         onClick = {
                             scope.launch {
                                 val id = if (isEditing) {
-                                    templateDao.update(
-                                        WorkoutTemplate(
-                                            id = templateId!!,
-                                            name = templateName.trim()
+                                    workoutDao.update(
+                                        Workout(
+                                            id = workoutId!!,
+                                            name = workoutName.trim()
                                         )
                                     )
-                                    templateId
+                                    workoutId
                                 } else {
-                                    templateDao.insert(
-                                        WorkoutTemplate(name = templateName.trim())
+                                    workoutDao.insert(
+                                        Workout(name = workoutName.trim())
                                     )
                                 }
-                                templateDao.deleteAllExercisesForTemplate(id)
+                                workoutDao.deleteAllExercisesForWorkout(id)
                                 exerciseEntries.forEachIndexed { index, entry ->
-                                    templateDao.insertTemplateExercise(
-                                        WorkoutTemplateExercise(
-                                            templateId = id,
+                                    workoutDao.insertWorkoutExercise(
+                                        WorkoutExercise(
+                                            workoutId = id,
                                             exerciseId = entry.exerciseId,
                                             targetSets = entry.targetSets,
                                             targetReps = entry.targetReps,
@@ -150,7 +150,7 @@ fun EditTemplateScreen(templateId: Long?, onNavigateBack: () -> Unit) {
                                 onNavigateBack()
                             }
                         },
-                        enabled = templateName.isNotBlank()
+                        enabled = workoutName.isNotBlank()
                     ) { Text("Save") }
                 }
             )
@@ -167,9 +167,9 @@ fun EditTemplateScreen(templateId: Long?, onNavigateBack: () -> Unit) {
         ) {
             item {
                 OutlinedTextField(
-                    value = templateName,
-                    onValueChange = { templateName = it },
-                    label = { Text("Template name") },
+                    value = workoutName,
+                    onValueChange = { workoutName = it },
+                    label = { Text("Workout name") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -207,7 +207,7 @@ fun EditTemplateScreen(templateId: Long?, onNavigateBack: () -> Unit) {
                                 supportingContent = { Text(exercise.type.name) },
                                 modifier = Modifier.clickable {
                                     val defaults = if (exercise.type == ExerciseType.WEIGHT) {
-                                        TemplateExerciseEntry(
+                                        WorkoutExerciseEntry(
                                             exerciseId = exercise.id,
                                             exerciseName = exercise.name,
                                             exerciseType = exercise.type,
@@ -216,7 +216,7 @@ fun EditTemplateScreen(templateId: Long?, onNavigateBack: () -> Unit) {
                                             targetWeightKg = 20.0
                                         )
                                     } else {
-                                        TemplateExerciseEntry(
+                                        WorkoutExerciseEntry(
                                             exerciseId = exercise.id,
                                             exerciseName = exercise.name,
                                             exerciseType = exercise.type,
@@ -243,8 +243,8 @@ fun EditTemplateScreen(templateId: Long?, onNavigateBack: () -> Unit) {
 
 @Composable
 private fun ExerciseEntryCard(
-    entry: TemplateExerciseEntry,
-    onUpdate: (TemplateExerciseEntry) -> Unit,
+    entry: WorkoutExerciseEntry,
+    onUpdate: (WorkoutExerciseEntry) -> Unit,
     onRemove: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {

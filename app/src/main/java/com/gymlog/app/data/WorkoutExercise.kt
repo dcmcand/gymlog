@@ -6,12 +6,12 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "workout_template_exercises",
+    tableName = "workout_exercises",
     foreignKeys = [
         ForeignKey(
-            entity = WorkoutTemplate::class,
+            entity = Workout::class,
             parentColumns = ["id"],
-            childColumns = ["templateId"],
+            childColumns = ["workoutId"],
             onDelete = ForeignKey.CASCADE
         ),
         ForeignKey(
@@ -21,11 +21,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("templateId"), Index("exerciseId")]
+    indices = [Index("workoutId"), Index("exerciseId")]
 )
-data class WorkoutTemplateExercise(
+data class WorkoutExercise(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val templateId: Long,
+    val workoutId: Long,
     val exerciseId: Long,
     val targetSets: Int,
     val targetReps: Int? = null,

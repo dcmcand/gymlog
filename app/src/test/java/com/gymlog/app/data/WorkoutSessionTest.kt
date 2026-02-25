@@ -19,15 +19,15 @@ class WorkoutSessionTest {
     }
 
     @Test
-    fun `session links to template with date and status`() {
+    fun `session links to workout with date and status`() {
         val now = Instant.now()
         val session = WorkoutSession(
-            templateId = 1L,
+            workoutId = 1L,
             date = LocalDate.of(2026, 2, 24),
             status = SessionStatus.IN_PROGRESS,
             startedAt = now
         )
-        assertEquals(1L, session.templateId)
+        assertEquals(1L, session.workoutId)
         assertEquals(LocalDate.of(2026, 2, 24), session.date)
         assertEquals(SessionStatus.IN_PROGRESS, session.status)
         assertEquals(now, session.startedAt)

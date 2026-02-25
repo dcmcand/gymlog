@@ -2,19 +2,19 @@ package com.gymlog.app.ui.navigation
 
 sealed class Screen(val route: String) {
     data object Calendar : Screen("calendar")
-    data object Templates : Screen("templates")
+    data object Workouts : Screen("workouts")
     data object Exercises : Screen("exercises")
-    data object TemplatePicker : Screen("template_picker")
-    data object NewWorkout : Screen("new_workout/{templateId}") {
-        fun createRoute(templateId: Long) = "new_workout/$templateId"
+    data object WorkoutPicker : Screen("workout_picker")
+    data object NewWorkout : Screen("new_workout/{workoutId}") {
+        fun createRoute(workoutId: Long) = "new_workout/$workoutId"
     }
     data object ExerciseProgress : Screen("exercise_progress/{exerciseId}") {
         fun createRoute(exerciseId: Long) = "exercise_progress/$exerciseId"
     }
-    data object EditTemplate : Screen("edit_template/{templateId}") {
-        fun createRoute(templateId: Long) = "edit_template/$templateId"
+    data object EditWorkout : Screen("edit_workout/{workoutId}") {
+        fun createRoute(workoutId: Long) = "edit_workout/$workoutId"
     }
-    data object CreateTemplate : Screen("create_template")
+    data object CreateWorkout : Screen("create_workout")
     data object WorkoutDetail : Screen("workout_detail/{sessionId}") {
         fun createRoute(sessionId: Long) = "workout_detail/$sessionId"
     }

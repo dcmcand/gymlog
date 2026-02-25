@@ -56,7 +56,7 @@ import java.util.Locale
 
 data class SessionSummary(
     val sessionId: Long,
-    val templateName: String,
+    val workoutName: String,
     val exerciseCount: Int,
     val status: String,
     val isInProgress: Boolean
@@ -72,7 +72,7 @@ fun CalendarScreen(
     val context = LocalContext.current
     val db = remember { GymLogDatabase.getDatabase(context) }
     val sessionDao = db.workoutSessionDao()
-    val templateDao = db.workoutTemplateDao()
+    val workoutDao = db.workoutDao()
     val scope = rememberCoroutineScope()
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -203,9 +203,9 @@ fun CalendarScreen(
                                                 val sessions =
                                                     sessionDao.getSessionsForDate(date)
                                                 selectedDaySessions = sessions.map { session ->
-                                                    val templateName =
-                                                        session.templateId?.let {
-                                                            templateDao.getById(it)?.name
+                                                    val workoutName =
+                                                        session.workoutId?.let {
+                                                            workoutDao.getById(it)?.name
                                                         } ?: "Freestyle"
                                                     val sets =
                                                         sessionDao.getSetsForSession(session.id)
@@ -216,7 +216,7 @@ fun CalendarScreen(
                                                         .lowercase().replace('_', ' ')
                                                     SessionSummary(
                                                         sessionId = session.id,
-                                                        templateName = templateName,
+                                                        workoutName = workoutName,
                                                         exerciseCount = exerciseCount,
                                                         status = statusLabel,
                                                         isInProgress = session.status == SessionStatus.IN_PROGRESS
@@ -291,7 +291,7 @@ fun CalendarScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = summary.templateName,
+                                    text = summary.workoutName,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Text(

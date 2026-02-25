@@ -25,11 +25,11 @@ import androidx.navigation.navArgument
 import com.gymlog.app.ui.calendar.CalendarScreen
 import com.gymlog.app.ui.calendar.WorkoutDetailScreen
 import com.gymlog.app.ui.exercises.ExerciseListScreen
-import com.gymlog.app.ui.templates.EditTemplateScreen
-import com.gymlog.app.ui.templates.TemplateListScreen
+import com.gymlog.app.ui.workouts.EditWorkoutScreen
+import com.gymlog.app.ui.workouts.WorkoutListScreen
 import com.gymlog.app.ui.progress.ExerciseProgressScreen
 import com.gymlog.app.ui.workout.ActiveWorkoutScreen
-import com.gymlog.app.ui.workout.TemplatePickerScreen
+import com.gymlog.app.ui.workout.WorkoutPickerScreen
 
 data class BottomNavItem(val screen: Screen, val label: String, val icon: ImageVector)
 
@@ -39,7 +39,7 @@ fun GymLogNavigation() {
 
     val bottomNavItems = listOf(
         BottomNavItem(Screen.Calendar, "Calendar", Icons.Default.DateRange),
-        BottomNavItem(Screen.Templates, "Templates", Icons.AutoMirrored.Filled.List),
+        BottomNavItem(Screen.Workouts, "Workouts", Icons.AutoMirrored.Filled.List),
         BottomNavItem(Screen.Exercises, "Exercises", Icons.Default.FitnessCenter)
     )
 
@@ -80,7 +80,7 @@ fun GymLogNavigation() {
             composable(Screen.Calendar.route) {
                 CalendarScreen(
                     onNewWorkoutClick = {
-                        navController.navigate(Screen.TemplatePicker.route)
+                        navController.navigate(Screen.WorkoutPicker.route)
                     },
                     onResumeWorkout = { sessionId ->
                         navController.navigate(Screen.ResumeWorkout.createRoute(sessionId))
@@ -90,45 +90,45 @@ fun GymLogNavigation() {
                     }
                 )
             }
-            composable(Screen.Templates.route) {
-                TemplateListScreen(
-                    onTemplateClick = { templateId ->
-                        navController.navigate(Screen.EditTemplate.createRoute(templateId))
+            composable(Screen.Workouts.route) {
+                WorkoutListScreen(
+                    onWorkoutClick = { workoutId ->
+                        navController.navigate(Screen.EditWorkout.createRoute(workoutId))
                     },
                     onCreateClick = {
-                        navController.navigate(Screen.CreateTemplate.route)
+                        navController.navigate(Screen.CreateWorkout.route)
                     }
                 )
             }
-            composable(Screen.CreateTemplate.route) {
-                EditTemplateScreen(
-                    templateId = null,
+            composable(Screen.CreateWorkout.route) {
+                EditWorkoutScreen(
+                    workoutId = null,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
-            composable(Screen.EditTemplate.route) { backStackEntry ->
-                val templateId = backStackEntry.arguments?.getString("templateId")?.toLongOrNull()
-                EditTemplateScreen(
-                    templateId = templateId,
+            composable(Screen.EditWorkout.route) { backStackEntry ->
+                val workoutId = backStackEntry.arguments?.getString("workoutId")?.toLongOrNull()
+                EditWorkoutScreen(
+                    workoutId = workoutId,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
-            composable(Screen.TemplatePicker.route) {
-                TemplatePickerScreen(
-                    onTemplatePicked = { templateId ->
-                        navController.navigate(Screen.NewWorkout.createRoute(templateId))
+            composable(Screen.WorkoutPicker.route) {
+                WorkoutPickerScreen(
+                    onWorkoutPicked = { workoutId ->
+                        navController.navigate(Screen.NewWorkout.createRoute(workoutId))
                     },
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(
                 route = Screen.NewWorkout.route,
-                arguments = listOf(navArgument("templateId") { type = NavType.StringType })
+                arguments = listOf(navArgument("workoutId") { type = NavType.StringType })
             ) { backStackEntry ->
-                val templateId = backStackEntry.arguments?.getString("templateId")?.toLongOrNull()
+                val workoutId = backStackEntry.arguments?.getString("workoutId")?.toLongOrNull()
                     ?: return@composable
                 ActiveWorkoutScreen(
-                    templateId = templateId,
+                    workoutId = workoutId,
                     onFinish = {
                         navController.popBackStack(Screen.Calendar.route, inclusive = false)
                     }

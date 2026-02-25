@@ -11,17 +11,17 @@ import java.time.LocalDate
     tableName = "workout_sessions",
     foreignKeys = [
         ForeignKey(
-            entity = WorkoutTemplate::class,
+            entity = Workout::class,
             parentColumns = ["id"],
-            childColumns = ["templateId"],
+            childColumns = ["workoutId"],
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("templateId"), Index("date")]
+    indices = [Index("workoutId"), Index("date")]
 )
 data class WorkoutSession(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val templateId: Long?,
+    val workoutId: Long?,
     val date: LocalDate,
     val status: SessionStatus,
     val startedAt: Instant,
