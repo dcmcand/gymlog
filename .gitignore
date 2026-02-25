@@ -24,5 +24,8 @@ local.properties
 .DS_Store
 Thumbs.db
 
+# Worktrees
+.worktrees/
+
 # Claude
 CLAUDE.md
