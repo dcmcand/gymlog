@@ -368,27 +368,49 @@ private fun WeightSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet
     val weightText = set.weightKg?.let {
         if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString()
     } ?: ""
-    var weightFieldValue by remember(set.weightKg) {
+    var weightFieldValue by remember {
         mutableStateOf(TextFieldValue(weightText))
+    }
+    var selectOnNextChange by remember { mutableStateOf(false) }
+
+    // Sync from external changes (e.g., +/- 2.5kg buttons) without resetting cursor during typing
+    LaunchedEffect(set.weightKg) {
+        val currentParsed = weightFieldValue.text.toDoubleOrNull()
+        if (currentParsed != set.weightKg) {
+            val newText = set.weightKg?.let {
+                if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString()
+            } ?: ""
+            weightFieldValue = TextFieldValue(newText, TextRange(newText.length))
+        }
     }
 
     Column {
+        // Row 1: set number, weight field, status buttons
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                "Set $setIndex",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.width(40.dp)
+                "$setIndex",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.width(24.dp)
             )
             OutlinedTextField(
                 value = weightFieldValue,
                 onValueChange = { newValue ->
-                    weightFieldValue = newValue
-                    val parsed = newValue.text.toDoubleOrNull()
-                    if (parsed != null || newValue.text.isEmpty()) {
-                        onUpdate(set.copy(weightKg = parsed))
+                    if (selectOnNextChange && newValue.selection.collapsed
+                        && newValue.text == weightFieldValue.text) {
+                        selectOnNextChange = false
+                        weightFieldValue = newValue.copy(
+                            selection = TextRange(0, newValue.text.length)
+                        )
+                    } else {
+                        selectOnNextChange = false
+                        weightFieldValue = newValue
+                        val parsed = newValue.text.toDoubleOrNull()
+                        if (parsed != null || newValue.text.isEmpty()) {
+                            onUpdate(set.copy(weightKg = parsed))
+                        }
                     }
                 },
                 label = { Text("kg") },
@@ -397,6 +419,7 @@ private fun WeightSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet
                     .weight(1f)
                     .onFocusChanged { focusState ->
                         if (focusState.isFocused) {
+                            selectOnNextChange = true
                             weightFieldValue = weightFieldValue.copy(
                                 selection = TextRange(0, weightFieldValue.text.length)
                             )
@@ -404,7 +427,48 @@ private fun WeightSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet
                     },
                 singleLine = true
             )
-            // Reps with +/- buttons
+            Spacer(modifier = Modifier.width(8.dp))
+            SetStatusButtons(
+                status = set.status,
+                onStatusChange = { status -> onUpdate(set.copy(status = status)) }
+            )
+        }
+        // Row 2: weight +/- 2.5 kg and rep +/- buttons
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 24.dp, top = 4.dp).fillMaxWidth()
+        ) {
+            IconButton(
+                onClick = {
+                    val newWeight = ((set.weightKg ?: 0.0) - 2.5).coerceAtLeast(0.0)
+                    onUpdate(set.copy(weightKg = newWeight))
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Remove,
+                    contentDescription = "Decrease weight by 2.5 kg",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Text(
+                "2.5 kg",
+                style = MaterialTheme.typography.labelSmall
+            )
+            IconButton(
+                onClick = {
+                    val newWeight = (set.weightKg ?: 0.0) + 2.5
+                    onUpdate(set.copy(weightKg = newWeight))
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Increase weight by 2.5 kg",
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
             IconButton(
                 onClick = {
                     val newReps = ((set.repsCompleted ?: 1) - 1).coerceAtLeast(0)
@@ -429,50 +493,6 @@ private fun WeightSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet
                 Icon(
                     Icons.Default.Add,
                     contentDescription = "Increase reps",
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            // Status buttons
-            SetStatusButtons(
-                status = set.status,
-                onStatusChange = { status -> onUpdate(set.copy(status = status)) }
-            )
-        }
-
-        // Weight +/- 2.5 kg buttons
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(start = 40.dp, top = 4.dp)
-        ) {
-            IconButton(
-                onClick = {
-                    val newWeight = ((set.weightKg ?: 0.0) - 2.5).coerceAtLeast(0.0)
-                    onUpdate(set.copy(weightKg = newWeight))
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.Remove,
-                    contentDescription = "Decrease weight by 2.5 kg",
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Text(
-                "2.5 kg",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.align(Alignment.CenterVertically)
-            )
-            IconButton(
-                onClick = {
-                    val newWeight = (set.weightKg ?: 0.0) + 2.5
-                    onUpdate(set.copy(weightKg = newWeight))
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Increase weight by 2.5 kg",
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -533,14 +553,6 @@ private fun SetStatusButtons(status: SetStatus, onStatusChange: (SetStatus) -> U
             label = "Hard",
             selectedColor = MaterialTheme.colorScheme.tertiary,
             selectedContentColor = MaterialTheme.colorScheme.onTertiary
-        )
-        StatusChip(
-            selected = status == SetStatus.PARTIAL,
-            onClick = { onStatusChange(SetStatus.PARTIAL) },
-            icon = Icons.Default.Remove,
-            label = "Partial",
-            selectedColor = MaterialTheme.colorScheme.secondary,
-            selectedContentColor = MaterialTheme.colorScheme.onSecondary
         )
         StatusChip(
             selected = status == SetStatus.FAILED,
