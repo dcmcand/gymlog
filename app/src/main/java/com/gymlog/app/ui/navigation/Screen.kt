@@ -15,4 +15,7 @@ sealed class Screen(val route: String) {
         fun createRoute(templateId: Long) = "edit_template/$templateId"
     }
     data object CreateTemplate : Screen("create_template")
+    data object WorkoutDetail : Screen("workout_detail/{sessionId}") {
+        fun createRoute(sessionId: Long) = "workout_detail/$sessionId"
+    }
 }

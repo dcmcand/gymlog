@@ -23,6 +23,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.gymlog.app.ui.calendar.CalendarScreen
+import com.gymlog.app.ui.calendar.WorkoutDetailScreen
 import com.gymlog.app.ui.exercises.ExerciseListScreen
 import com.gymlog.app.ui.templates.EditTemplateScreen
 import com.gymlog.app.ui.templates.TemplateListScreen
@@ -83,6 +84,9 @@ fun GymLogNavigation() {
                     },
                     onResumeWorkout = { sessionId ->
                         // TODO: navigate to active workout with session id
+                    },
+                    onWorkoutClick = { sessionId ->
+                        navController.navigate(Screen.WorkoutDetail.createRoute(sessionId))
                     }
                 )
             }
@@ -128,6 +132,17 @@ fun GymLogNavigation() {
                     onFinish = {
                         navController.popBackStack(Screen.Calendar.route, inclusive = false)
                     }
+                )
+            }
+            composable(
+                route = Screen.WorkoutDetail.route,
+                arguments = listOf(navArgument("sessionId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val sessionId = backStackEntry.arguments?.getString("sessionId")?.toLongOrNull()
+                    ?: return@composable
+                WorkoutDetailScreen(
+                    sessionId = sessionId,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(Screen.Exercises.route) {

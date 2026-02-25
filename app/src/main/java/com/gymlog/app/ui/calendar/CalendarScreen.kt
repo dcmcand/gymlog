@@ -53,11 +53,19 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
+data class SessionSummary(
+    val sessionId: Long,
+    val templateName: String,
+    val exerciseCount: Int,
+    val status: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
     onNewWorkoutClick: () -> Unit,
-    onResumeWorkout: (Long) -> Unit
+    onResumeWorkout: (Long) -> Unit,
+    onWorkoutClick: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val db = remember { GymLogDatabase.getDatabase(context) }
@@ -67,7 +75,7 @@ fun CalendarScreen(
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
-    var selectedDaySummary by remember { mutableStateOf<String?>(null) }
+    var selectedDaySessions by remember { mutableStateOf<List<SessionSummary>>(emptyList()) }
     var inProgressSessionId by remember { mutableStateOf<Long?>(null) }
 
     val firstDay = currentMonth.atDay(1)
@@ -192,25 +200,24 @@ fun CalendarScreen(
                                             scope.launch {
                                                 val sessions =
                                                     sessionDao.getSessionsForDate(date)
-                                                if (sessions.isEmpty()) {
-                                                    selectedDaySummary = null
-                                                } else {
-                                                    val summaries = sessions.map { session ->
-                                                        val templateName =
-                                                            session.templateId?.let {
-                                                                templateDao.getById(it)?.name
-                                                            } ?: "Freestyle"
-                                                        val sets =
-                                                            sessionDao.getSetsForSession(session.id)
-                                                        val exerciseCount =
-                                                            sets.map { it.exerciseId }
-                                                                .distinct().size
-                                                        val statusLabel = session.status.name
-                                                            .lowercase().replace('_', ' ')
-                                                        "$templateName - $exerciseCount exercises ($statusLabel)"
-                                                    }
-                                                    selectedDaySummary =
-                                                        summaries.joinToString("\n")
+                                                selectedDaySessions = sessions.map { session ->
+                                                    val templateName =
+                                                        session.templateId?.let {
+                                                            templateDao.getById(it)?.name
+                                                        } ?: "Freestyle"
+                                                    val sets =
+                                                        sessionDao.getSetsForSession(session.id)
+                                                    val exerciseCount =
+                                                        sets.map { it.exerciseId }
+                                                            .distinct().size
+                                                    val statusLabel = session.status.name
+                                                        .lowercase().replace('_', ' ')
+                                                    SessionSummary(
+                                                        sessionId = session.id,
+                                                        templateName = templateName,
+                                                        exerciseCount = exerciseCount,
+                                                        status = statusLabel
+                                                    )
                                                 }
                                             }
                                         }
@@ -251,17 +258,45 @@ fun CalendarScreen(
                 }
             }
 
-            // Selected day summary card
-            if (selectedDate != null && selectedDaySummary != null) {
+            // Selected day session cards
+            if (selectedDate != null && selectedDaySessions.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = selectedDate.toString(),
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(selectedDaySummary!!)
+                Text(
+                    text = selectedDate.toString(),
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                selectedDaySessions.forEach { summary ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { onWorkoutClick(summary.sessionId) }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = summary.templateName,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                    text = "${summary.exerciseCount} exercises",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                text = summary.status,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             } else if (selectedDate != null) {
