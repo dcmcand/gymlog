@@ -1,5 +1,9 @@
 package com.gymlog.app.ui.workout
 
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +28,7 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -39,6 +44,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -60,6 +67,7 @@ import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.SessionStatus
 import com.gymlog.app.data.SetStatus
 import com.gymlog.app.data.WorkoutSession
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -83,6 +91,38 @@ fun ActiveWorkoutScreen(
     val workoutState = remember { ActiveWorkoutState() }
     var isLoading by remember { mutableStateOf(true) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Rest timer state
+    var showRestTimer by remember { mutableStateOf(false) }
+    var timerRunning by remember { mutableStateOf(false) }
+    var remainingSeconds by remember { mutableIntStateOf(90) }
+
+    // Countdown effect
+    LaunchedEffect(timerRunning) {
+        if (timerRunning) {
+            while (remainingSeconds > 0) {
+                delay(1000L)
+                remainingSeconds--
+            }
+            // Vibrate when timer reaches zero
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = context.getSystemService(VibratorManager::class.java)
+                vibratorManager?.defaultVibrator?.vibrate(
+                    VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                val vibrator = context.getSystemService(Vibrator::class.java)
+                vibrator?.vibrate(
+                    VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE)
+                )
+            }
+            // Brief "Rest Complete" display, then auto-hide
+            delay(2000L)
+            timerRunning = false
+            showRestTimer = false
+        }
+    }
 
     // Initialize: either resume existing session or create new from template
     LaunchedEffect(templateId, resumeSessionId) {
@@ -223,6 +263,20 @@ fun ActiveWorkoutScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (showRestTimer) {
+                item(key = "rest_timer") {
+                    RestTimerBar(
+                        remainingSeconds = remainingSeconds,
+                        timerRunning = timerRunning,
+                        onStart = { timerRunning = true },
+                        onExtend = { remainingSeconds += 90 },
+                        onDismiss = {
+                            timerRunning = false
+                            showRestTimer = false
+                        }
+                    )
+                }
+            }
             items(
                 items = workoutState.exercises,
                 key = { it.id }
@@ -235,6 +289,11 @@ fun ActiveWorkoutScreen(
                     onSetUpdated = { setIndex, updatedSet ->
                         workoutState.updateSet(exercise.id, setIndex, updatedSet)
                         scope.launch { sessionDao.updateSet(updatedSet) }
+                        if (updatedSet.status != SetStatus.PENDING) {
+                            remainingSeconds = 90
+                            showRestTimer = true
+                            timerRunning = false
+                        }
                     },
                     onAddSet = {
                         scope.launch {
@@ -509,6 +568,65 @@ private fun StatusChip(
             Icon(icon, contentDescription = label, modifier = Modifier.size(14.dp))
             if (selected) {
                 Text(label, style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RestTimerBar(
+    remainingSeconds: Int,
+    timerRunning: Boolean,
+    onStart: () -> Unit,
+    onExtend: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val minutes = remainingSeconds / 60
+    val seconds = remainingSeconds % 60
+    val timeText = "%d:%02d".format(minutes, seconds)
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!timerRunning && remainingSeconds > 0) {
+                Button(onClick = onStart) {
+                    Text("Rest $timeText")
+                }
+            } else if (remainingSeconds > 0) {
+                Text(
+                    text = timeText,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                TextButton(onClick = onExtend) {
+                    Text("+1:30")
+                }
+            } else {
+                Text(
+                    text = "Rest Complete",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Dismiss timer",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             }
         }
     }
