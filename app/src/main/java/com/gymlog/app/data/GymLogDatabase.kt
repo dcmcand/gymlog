@@ -37,10 +37,21 @@ abstract class GymLogDatabase : RoomDatabase() {
 
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
+                // Rename tables
                 db.execSQL("ALTER TABLE workout_templates RENAME TO workouts")
                 db.execSQL("ALTER TABLE workout_template_exercises RENAME TO workout_exercises")
+
+                // Rename columns
                 db.execSQL("ALTER TABLE workout_exercises RENAME COLUMN templateId TO workoutId")
                 db.execSQL("ALTER TABLE workout_sessions RENAME COLUMN templateId TO workoutId")
+
+                // Recreate indices with new names (SQLite doesn't support ALTER INDEX)
+                db.execSQL("DROP INDEX IF EXISTS index_workout_template_exercises_templateId")
+                db.execSQL("DROP INDEX IF EXISTS index_workout_template_exercises_exerciseId")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_exercises_workoutId ON workout_exercises(workoutId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_exercises_exerciseId ON workout_exercises(exerciseId)")
+                db.execSQL("DROP INDEX IF EXISTS index_workout_sessions_templateId")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_sessions_workoutId ON workout_sessions(workoutId)")
             }
         }
 
