@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WorkoutSession::class,
         ExerciseSet::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -32,6 +32,15 @@ abstract class GymLogDatabase : RoomDatabase() {
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("UPDATE exercise_sets SET status = 'EASY' WHERE status = 'COMPLETED'")
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercises ADD COLUMN cardioFixedDimension TEXT")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN fixedValue INTEGER")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN level INTEGER")
+                db.execSQL("ALTER TABLE exercises ADD COLUMN distanceDisplayKm INTEGER NOT NULL DEFAULT 0")
             }
         }
 
@@ -61,7 +70,7 @@ abstract class GymLogDatabase : RoomDatabase() {
                     context.applicationContext,
                     GymLogDatabase::class.java,
                     "gymlog_database"
-                ).addMigrations(MIGRATION_3_4, MIGRATION_4_5).fallbackToDestructiveMigration(dropAllTables = true).build()
+                ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).fallbackToDestructiveMigration(dropAllTables = true).build()
                 INSTANCE = instance
                 instance
             }

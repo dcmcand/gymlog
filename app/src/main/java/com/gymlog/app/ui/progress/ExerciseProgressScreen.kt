@@ -26,11 +26,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.gymlog.app.data.CardioFixedDimension
 import com.gymlog.app.data.CardioProgressEntry
+import com.gymlog.app.data.DistanceProgressEntry
 import com.gymlog.app.data.Exercise
 import com.gymlog.app.data.ExerciseType
 import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.ProgressEntry
+import com.gymlog.app.data.TimeProgressEntry
+import com.gymlog.app.data.displayName
+import com.gymlog.app.ui.common.formatMMSS
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
@@ -49,6 +54,8 @@ fun ExerciseProgressScreen(exerciseId: Long, onNavigateBack: () -> Unit) {
     var exercise by remember { mutableStateOf<Exercise?>(null) }
     var weightProgress by remember { mutableStateOf<List<ProgressEntry>>(emptyList()) }
     var cardioProgress by remember { mutableStateOf<List<CardioProgressEntry>>(emptyList()) }
+    var timeProgress by remember { mutableStateOf<List<TimeProgressEntry>>(emptyList()) }
+    var distanceProgress by remember { mutableStateOf<List<DistanceProgressEntry>>(emptyList()) }
     val modelProducer = remember { CartesianChartModelProducer() }
 
     LaunchedEffect(exerciseId) {
@@ -61,7 +68,24 @@ fun ExerciseProgressScreen(exerciseId: Long, onNavigateBack: () -> Unit) {
                         lineSeries { series(weightProgress.map { it.maxWeight }) }
                     }
                 }
+            } else if (ex.cardioFixedDimension == CardioFixedDimension.DISTANCE) {
+                // Fixed distance: track time (lower is better)
+                timeProgress = sessionDao.getTimeProgressForExercise(exerciseId)
+                if (timeProgress.isNotEmpty()) {
+                    modelProducer.runTransaction {
+                        lineSeries { series(timeProgress.map { it.minDuration.toDouble() }) }
+                    }
+                }
+            } else if (ex.cardioFixedDimension == CardioFixedDimension.TIME) {
+                // Fixed time: track distance (higher is better)
+                distanceProgress = sessionDao.getDistanceProgressForExercise(exerciseId)
+                if (distanceProgress.isNotEmpty()) {
+                    modelProducer.runTransaction {
+                        lineSeries { series(distanceProgress.map { it.maxDistance.toDouble() }) }
+                    }
+                }
             } else {
+                // Legacy cardio
                 cardioProgress = sessionDao.getCardioProgressForExercise(exerciseId)
                 if (cardioProgress.isNotEmpty()) {
                     modelProducer.runTransaction {
@@ -75,7 +99,7 @@ fun ExerciseProgressScreen(exerciseId: Long, onNavigateBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(exercise?.name ?: "Progress") },
+                title = { Text(exercise?.displayName() ?: "Progress") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -91,10 +115,11 @@ fun ExerciseProgressScreen(exerciseId: Long, onNavigateBack: () -> Unit) {
                 .padding(16.dp)
         ) {
             val ex = exercise ?: return@Scaffold
-            val hasData = if (ex.type == ExerciseType.WEIGHT) {
-                weightProgress.isNotEmpty()
-            } else {
-                cardioProgress.isNotEmpty()
+            val hasData = when {
+                ex.type == ExerciseType.WEIGHT -> weightProgress.isNotEmpty()
+                ex.cardioFixedDimension == CardioFixedDimension.DISTANCE -> timeProgress.isNotEmpty()
+                ex.cardioFixedDimension == CardioFixedDimension.TIME -> distanceProgress.isNotEmpty()
+                else -> cardioProgress.isNotEmpty()
             }
 
             if (!hasData) {
@@ -102,7 +127,7 @@ fun ExerciseProgressScreen(exerciseId: Long, onNavigateBack: () -> Unit) {
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No workout data yet for ${ex.name}")
+                    Text("No workout data yet for ${ex.displayName()}")
                 }
                 return@Scaffold
             }
@@ -119,36 +144,74 @@ fun ExerciseProgressScreen(exerciseId: Long, onNavigateBack: () -> Unit) {
 
             val dateFormatter = DateTimeFormatter.ofPattern("MMM d")
 
-            if (ex.type == ExerciseType.WEIGHT && weightProgress.isNotEmpty()) {
-                val latest = weightProgress.last()
-                val best = weightProgress.maxBy { it.maxWeight }
-                Text(
-                    "Sessions: ${weightProgress.size}",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    "Last: ${latest.maxWeight} kg (${latest.date.format(dateFormatter)})",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    "Personal Best: ${best.maxWeight} kg (${best.date.format(dateFormatter)})",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            } else if (cardioProgress.isNotEmpty()) {
-                val latest = cardioProgress.last()
-                val best = cardioProgress.maxBy { it.maxDistance }
-                Text(
-                    "Sessions: ${cardioProgress.size}",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    "Last: ${latest.maxDistance}m (${latest.date.format(dateFormatter)})",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    "Best Distance: ${best.maxDistance}m (${best.date.format(dateFormatter)})",
-                    style = MaterialTheme.typography.bodyLarge
-                )
+            when {
+                ex.type == ExerciseType.WEIGHT && weightProgress.isNotEmpty() -> {
+                    val latest = weightProgress.last()
+                    val best = weightProgress.maxBy { it.maxWeight }
+                    Text(
+                        "Sessions: ${weightProgress.size}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Last: ${latest.maxWeight} kg (${latest.date.format(dateFormatter)})",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Personal Best: ${best.maxWeight} kg (${best.date.format(dateFormatter)})",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                ex.cardioFixedDimension == CardioFixedDimension.DISTANCE && timeProgress.isNotEmpty() -> {
+                    // Fixed distance: PB = lowest time
+                    val latest = timeProgress.last()
+                    val best = timeProgress.minBy { it.minDuration }
+                    Text(
+                        "Sessions: ${timeProgress.size}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Last: ${formatMMSS(latest.minDuration)} (${latest.date.format(dateFormatter)})",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Personal Best: ${formatMMSS(best.minDuration)} (${best.date.format(dateFormatter)})",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                ex.cardioFixedDimension == CardioFixedDimension.TIME && distanceProgress.isNotEmpty() -> {
+                    // Fixed time: PB = highest distance
+                    val latest = distanceProgress.last()
+                    val best = distanceProgress.maxBy { it.maxDistance }
+                    Text(
+                        "Sessions: ${distanceProgress.size}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Last: ${latest.maxDistance}m (${latest.date.format(dateFormatter)})",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Personal Best: ${best.maxDistance}m (${best.date.format(dateFormatter)})",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                cardioProgress.isNotEmpty() -> {
+                    // Legacy cardio
+                    val latest = cardioProgress.last()
+                    val best = cardioProgress.maxBy { it.maxDistance }
+                    Text(
+                        "Sessions: ${cardioProgress.size}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Last: ${latest.maxDistance}m (${latest.date.format(dateFormatter)})",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Best Distance: ${best.maxDistance}m (${best.date.format(dateFormatter)})",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
             }
         }
     }

@@ -66,4 +66,35 @@ class WorkoutSessionTest {
         assertNull(set.weightKg)
         assertNull(set.repsCompleted)
     }
+
+    @Test
+    fun `new-style fixed distance cardio set tracks only duration`() {
+        val set = ExerciseSet(
+            sessionId = 1L,
+            exerciseId = 4L,
+            setNumber = 1,
+            durationSec = 1530,
+            status = SetStatus.EASY
+        )
+        assertEquals(1530, set.durationSec)
+        assertNull(set.distanceM)
+        assertNull(set.weightKg)
+        assertNull(set.repsCompleted)
+    }
+
+    @Test
+    fun `new-style fixed time cardio set tracks only distance`() {
+        val set = ExerciseSet(
+            sessionId = 1L,
+            exerciseId = 5L,
+            setNumber = 1,
+            distanceM = 8500,
+            status = SetStatus.HARD
+        )
+        assertEquals(8500, set.distanceM)
+        assertEquals(SetStatus.HARD, set.status)
+        assertNull(set.durationSec)
+        assertNull(set.weightKg)
+        assertNull(set.repsCompleted)
+    }
 }

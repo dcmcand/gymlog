@@ -12,3 +12,13 @@ data class CardioProgressEntry(
     val minDuration: Int?,
     val date: LocalDate
 )
+
+data class TimeProgressEntry(
+    val minDuration: Int,
+    val date: LocalDate
+)
+
+data class DistanceProgressEntry(
+    val maxDistance: Int,
+    val date: LocalDate
+)

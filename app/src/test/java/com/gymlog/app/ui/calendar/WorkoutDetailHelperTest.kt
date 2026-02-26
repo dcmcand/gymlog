@@ -3,7 +3,6 @@ package com.gymlog.app.ui.calendar
 import com.gymlog.app.data.ExerciseSet
 import com.gymlog.app.data.SetStatus
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class WorkoutDetailHelperTest {
@@ -75,17 +74,17 @@ class WorkoutDetailHelperTest {
 
     @Test
     fun `formatDuration formats minutes and seconds`() {
-        assertEquals("8m 0s", formatDuration(480))
+        assertEquals("8:00", formatDuration(480))
     }
 
     @Test
     fun `formatDuration formats seconds only`() {
-        assertEquals("0m 45s", formatDuration(45))
+        assertEquals("0:45", formatDuration(45))
     }
 
     @Test
     fun `formatDuration formats mixed minutes and seconds`() {
-        assertEquals("7m 30s", formatDuration(450))
+        assertEquals("7:30", formatDuration(450))
     }
 
     @Test

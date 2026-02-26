@@ -76,4 +76,24 @@ interface WorkoutSessionDao {
         ORDER BY ws.date ASC
     """)
     suspend fun getCardioProgressForExercise(exerciseId: Long): List<CardioProgressEntry>
+
+    @Query("""
+        SELECT MIN(es.durationSec) as minDuration, ws.date
+        FROM exercise_sets es
+        INNER JOIN workout_sessions ws ON es.sessionId = ws.id
+        WHERE es.exerciseId = :exerciseId AND es.status IN ('EASY', 'HARD') AND es.durationSec IS NOT NULL
+        GROUP BY ws.date
+        ORDER BY ws.date ASC
+    """)
+    suspend fun getTimeProgressForExercise(exerciseId: Long): List<TimeProgressEntry>
+
+    @Query("""
+        SELECT MAX(es.distanceM) as maxDistance, ws.date
+        FROM exercise_sets es
+        INNER JOIN workout_sessions ws ON es.sessionId = ws.id
+        WHERE es.exerciseId = :exerciseId AND es.status IN ('EASY', 'HARD') AND es.distanceM IS NOT NULL
+        GROUP BY ws.date
+        ORDER BY ws.date ASC
+    """)
+    suspend fun getDistanceProgressForExercise(exerciseId: Long): List<DistanceProgressEntry>
 }

@@ -38,4 +38,11 @@ class Converters {
 
     @TypeConverter
     fun toSessionStatus(value: String): SessionStatus = SessionStatus.valueOf(value)
+
+    @TypeConverter
+    fun fromCardioFixedDimension(value: CardioFixedDimension?): String? = value?.name
+
+    @TypeConverter
+    fun toCardioFixedDimension(value: String?): CardioFixedDimension? =
+        value?.let { CardioFixedDimension.valueOf(it) }
 }

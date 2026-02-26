@@ -42,16 +42,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.gymlog.app.data.CardioFixedDimension
 import com.gymlog.app.data.ExerciseType
 import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.Workout
 import com.gymlog.app.data.WorkoutExercise
+import com.gymlog.app.data.displayName
 import kotlinx.coroutines.launch
 
 data class WorkoutExerciseEntry(
     val exerciseId: Long,
     val exerciseName: String,
     val exerciseType: ExerciseType,
+    val cardioFixedDimension: CardioFixedDimension? = null,
     val targetSets: Int = 3,
     val targetReps: Int? = 8,
     val targetWeightKg: Double? = null,
@@ -88,8 +91,9 @@ fun EditWorkoutScreen(workoutId: Long?, onNavigateBack: () -> Unit) {
                         exerciseEntries.add(
                             WorkoutExerciseEntry(
                                 exerciseId = exercise.id,
-                                exerciseName = exercise.name,
+                                exerciseName = exercise.displayName(),
                                 exerciseType = exercise.type,
+                                cardioFixedDimension = exercise.cardioFixedDimension,
                                 targetSets = we.targetSets,
                                 targetReps = we.targetReps,
                                 targetWeightKg = we.targetWeightKg,
@@ -203,22 +207,33 @@ fun EditWorkoutScreen(workoutId: Long?, onNavigateBack: () -> Unit) {
                     } else {
                         allExercises.forEach { exercise ->
                             ListItem(
-                                headlineContent = { Text(exercise.name) },
+                                headlineContent = { Text(exercise.displayName()) },
                                 supportingContent = { Text(exercise.type.name) },
                                 modifier = Modifier.clickable {
                                     val defaults = if (exercise.type == ExerciseType.WEIGHT) {
                                         WorkoutExerciseEntry(
                                             exerciseId = exercise.id,
-                                            exerciseName = exercise.name,
+                                            exerciseName = exercise.displayName(),
                                             exerciseType = exercise.type,
                                             targetSets = 3,
                                             targetReps = 8,
                                             targetWeightKg = 20.0
                                         )
-                                    } else {
+                                    } else if (exercise.cardioFixedDimension != null) {
+                                        // New-style cardio: sets only, fixed dimension on exercise
                                         WorkoutExerciseEntry(
                                             exerciseId = exercise.id,
-                                            exerciseName = exercise.name,
+                                            exerciseName = exercise.displayName(),
+                                            exerciseType = exercise.type,
+                                            cardioFixedDimension = exercise.cardioFixedDimension,
+                                            targetSets = 1,
+                                            targetReps = null
+                                        )
+                                    } else {
+                                        // Legacy cardio
+                                        WorkoutExerciseEntry(
+                                            exerciseId = exercise.id,
+                                            exerciseName = exercise.displayName(),
                                             exerciseType = exercise.type,
                                             targetSets = 1,
                                             targetReps = null,
@@ -285,7 +300,20 @@ private fun ExerciseEntryCard(
                         singleLine = true
                     )
                 }
+            } else if (entry.cardioFixedDimension != null) {
+                // New-style cardio: only sets field
+                OutlinedTextField(
+                    value = entry.targetSets.toString(),
+                    onValueChange = {
+                        onUpdate(entry.copy(targetSets = it.toIntOrNull() ?: entry.targetSets))
+                    },
+                    label = { Text("Sets") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
             } else {
+                // Legacy cardio
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = entry.targetDistanceM?.toString() ?: "",

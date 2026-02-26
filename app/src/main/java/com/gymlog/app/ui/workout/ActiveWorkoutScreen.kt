@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import com.gymlog.app.data.CardioFixedDimension
 import com.gymlog.app.data.Exercise
 import com.gymlog.app.data.ExerciseSet
 import com.gymlog.app.data.ExerciseType
@@ -68,6 +69,9 @@ import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.SessionStatus
 import com.gymlog.app.data.SetStatus
 import com.gymlog.app.data.WorkoutSession
+import com.gymlog.app.data.displayName
+import com.gymlog.app.ui.common.formatMMSS
+import com.gymlog.app.ui.common.parseMMSS
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -173,7 +177,26 @@ fun ActiveWorkoutScreen(
                             repsCompleted = te.targetReps,
                             status = SetStatus.PENDING
                         )
+                    } else if (exercise.cardioFixedDimension != null) {
+                        // New-style cardio: only pre-fill the variable dimension
+                        when (exercise.cardioFixedDimension) {
+                            CardioFixedDimension.DISTANCE -> ExerciseSet(
+                                sessionId = newSessionId,
+                                exerciseId = exercise.id,
+                                setNumber = setNum,
+                                durationSec = lastSet?.durationSec,
+                                status = SetStatus.PENDING
+                            )
+                            CardioFixedDimension.TIME -> ExerciseSet(
+                                sessionId = newSessionId,
+                                exerciseId = exercise.id,
+                                setNumber = setNum,
+                                distanceM = lastSet?.distanceM,
+                                status = SetStatus.PENDING
+                            )
+                        }
                     } else {
+                        // Legacy cardio
                         ExerciseSet(
                             sessionId = newSessionId,
                             exerciseId = exercise.id,
@@ -305,16 +328,37 @@ fun ActiveWorkoutScreen(
                         scope.launch {
                             val currentSets = workoutState.getExerciseSetsCopy(exercise.id)
                             val lastSet = currentSets.lastOrNull()
-                            val newSet = ExerciseSet(
-                                sessionId = sessionId!!,
-                                exerciseId = exercise.id,
-                                setNumber = currentSets.size + 1,
-                                weightKg = lastSet?.weightKg,
-                                repsCompleted = lastSet?.repsCompleted,
-                                distanceM = lastSet?.distanceM,
-                                durationSec = lastSet?.durationSec,
-                                status = SetStatus.PENDING
-                            )
+                            val newSet = if (exercise.cardioFixedDimension != null) {
+                                // New-style cardio: only copy the variable dimension
+                                when (exercise.cardioFixedDimension) {
+                                    CardioFixedDimension.DISTANCE -> ExerciseSet(
+                                        sessionId = sessionId!!,
+                                        exerciseId = exercise.id,
+                                        setNumber = currentSets.size + 1,
+                                        durationSec = lastSet?.durationSec,
+                                        status = SetStatus.PENDING
+                                    )
+                                    CardioFixedDimension.TIME -> ExerciseSet(
+                                        sessionId = sessionId!!,
+                                        exerciseId = exercise.id,
+                                        setNumber = currentSets.size + 1,
+                                        distanceM = lastSet?.distanceM,
+                                        status = SetStatus.PENDING
+                                    )
+                                }
+                            } else {
+                                // Weight or legacy cardio
+                                ExerciseSet(
+                                    sessionId = sessionId!!,
+                                    exerciseId = exercise.id,
+                                    setNumber = currentSets.size + 1,
+                                    weightKg = lastSet?.weightKg,
+                                    repsCompleted = lastSet?.repsCompleted,
+                                    distanceM = lastSet?.distanceM,
+                                    durationSec = lastSet?.durationSec,
+                                    status = SetStatus.PENDING
+                                )
+                            }
                             val insertedId = sessionDao.insertSet(newSet)
                             workoutState.addSet(exercise.id, newSet.copy(id = insertedId))
                         }
@@ -335,7 +379,7 @@ private fun ExerciseCard(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                exercise.name,
+                exercise.displayName(),
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -345,6 +389,13 @@ private fun ExerciseCard(
                     WeightSetRow(
                         set = set,
                         setIndex = index + 1,
+                        onUpdate = { updated -> onSetUpdated(index, updated) }
+                    )
+                } else if (exercise.cardioFixedDimension != null) {
+                    NewCardioSetRow(
+                        set = set,
+                        setIndex = index + 1,
+                        fixedDimension = exercise.cardioFixedDimension,
                         onUpdate = { updated -> onSetUpdated(index, updated) }
                     )
                 } else {
@@ -502,6 +553,86 @@ private fun WeightSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun NewCardioSetRow(
+    set: ExerciseSet,
+    setIndex: Int,
+    fixedDimension: CardioFixedDimension,
+    onUpdate: (ExerciseSet) -> Unit
+) {
+    var timeText by remember {
+        mutableStateOf(formatMMSS(set.durationSec))
+    }
+    var distanceText by remember {
+        mutableStateOf(set.distanceM?.toString() ?: "")
+    }
+
+    // Sync from external changes
+    LaunchedEffect(set.durationSec) {
+        val newFormatted = formatMMSS(set.durationSec)
+        if (newFormatted != timeText) {
+            timeText = newFormatted
+        }
+    }
+    LaunchedEffect(set.distanceM) {
+        val newText = set.distanceM?.toString() ?: ""
+        if (newText != distanceText) {
+            distanceText = newText
+        }
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            "$setIndex",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.width(24.dp)
+        )
+        when (fixedDimension) {
+            CardioFixedDimension.DISTANCE -> {
+                // Fixed distance: track time
+                OutlinedTextField(
+                    value = timeText,
+                    onValueChange = { newValue ->
+                        timeText = newValue
+                        val parsed = parseMMSS(newValue)
+                        if (parsed != null) {
+                            onUpdate(set.copy(durationSec = parsed))
+                        }
+                    },
+                    label = { Text("MM:SS") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            CardioFixedDimension.TIME -> {
+                // Fixed time: track distance
+                OutlinedTextField(
+                    value = distanceText,
+                    onValueChange = { newValue ->
+                        distanceText = newValue
+                        val parsed = newValue.toIntOrNull()
+                        if (parsed != null || newValue.isEmpty()) {
+                            onUpdate(set.copy(distanceM = parsed))
+                        }
+                    },
+                    label = { Text("m") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        SetStatusButtons(
+            status = set.status,
+            onStatusChange = { status -> onUpdate(set.copy(status = status)) }
+        )
     }
 }
 

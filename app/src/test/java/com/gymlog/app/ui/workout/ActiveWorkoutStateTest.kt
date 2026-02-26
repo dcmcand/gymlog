@@ -1,5 +1,6 @@
 package com.gymlog.app.ui.workout
 
+import com.gymlog.app.data.CardioFixedDimension
 import com.gymlog.app.data.ExerciseSet
 import com.gymlog.app.data.ExerciseType
 import com.gymlog.app.data.Exercise
@@ -13,7 +14,13 @@ class ActiveWorkoutStateTest {
     private lateinit var state: ActiveWorkoutState
 
     private val squat = Exercise(id = 1L, name = "Squat", type = ExerciseType.WEIGHT)
-    private val rowing = Exercise(id = 2L, name = "Rowing", type = ExerciseType.CARDIO)
+    private val rowing = Exercise(
+        id = 2L,
+        name = "Rowing",
+        type = ExerciseType.CARDIO,
+        cardioFixedDimension = CardioFixedDimension.TIME,
+        fixedValue = 1800
+    )
 
     private fun weightSet(id: Long, exerciseId: Long, setNumber: Int, weight: Double, reps: Int) =
         ExerciseSet(
@@ -26,14 +33,13 @@ class ActiveWorkoutStateTest {
             status = SetStatus.PENDING
         )
 
-    private fun cardioSet(id: Long, exerciseId: Long, setNumber: Int, distance: Int, duration: Int) =
+    private fun cardioSet(id: Long, exerciseId: Long, setNumber: Int, distance: Int) =
         ExerciseSet(
             id = id,
             sessionId = 1L,
             exerciseId = exerciseId,
             setNumber = setNumber,
             distanceM = distance,
-            durationSec = duration,
             status = SetStatus.PENDING
         )
 
@@ -49,7 +55,7 @@ class ActiveWorkoutStateTest {
         )
         state.addExercise(
             rowing,
-            listOf(cardioSet(3L, 2L, 1, 2000, 480))
+            listOf(cardioSet(3L, 2L, 1, 8500))
         )
     }
 

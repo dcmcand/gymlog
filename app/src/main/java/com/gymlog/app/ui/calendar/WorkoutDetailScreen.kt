@@ -42,12 +42,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.gymlog.app.data.CardioFixedDimension
 import com.gymlog.app.data.Exercise
 import com.gymlog.app.data.ExerciseSet
 import com.gymlog.app.data.ExerciseType
 import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.SetStatus
 import com.gymlog.app.data.WorkoutSession
+import com.gymlog.app.data.displayName
+import com.gymlog.app.ui.common.formatMMSS
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -170,7 +173,7 @@ private fun ExerciseDetailCard(exercise: Exercise, sets: List<ExerciseSet>) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = exercise.name,
+                text = exercise.displayName(),
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -203,7 +206,33 @@ private fun ExerciseDetailCard(exercise: Exercise, sets: List<ExerciseSet>) {
                     )
                     Spacer(modifier = Modifier.width(24.dp))
                 }
+            } else if (exercise.cardioFixedDimension != null) {
+                // New-style cardio: single tracked dimension header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "#",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.width(28.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        when (exercise.cardioFixedDimension) {
+                            CardioFixedDimension.DISTANCE -> "Time"
+                            CardioFixedDimension.TIME -> "Distance"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(24.dp))
+                }
             } else {
+                // Legacy cardio
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -238,6 +267,8 @@ private fun ExerciseDetailCard(exercise: Exercise, sets: List<ExerciseSet>) {
             sets.forEach { set ->
                 if (exercise.type == ExerciseType.WEIGHT) {
                     WeightSetDetailRow(set)
+                } else if (exercise.cardioFixedDimension != null) {
+                    NewCardioSetDetailRow(set, exercise.cardioFixedDimension)
                 } else {
                     CardioSetDetailRow(set)
                 }
@@ -268,6 +299,34 @@ private fun WeightSetDetailRow(set: ExerciseSet) {
             "${set.repsCompleted ?: "-"}",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.width(40.dp)
+        )
+        SetStatusIcon(
+            status = set.status,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun NewCardioSetDetailRow(set: ExerciseSet, fixedDimension: CardioFixedDimension) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "${set.setNumber}",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.width(28.dp)
+        )
+        Text(
+            when (fixedDimension) {
+                CardioFixedDimension.DISTANCE -> formatMMSS(set.durationSec)
+                CardioFixedDimension.TIME -> "${set.distanceM ?: "-"} m"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
         )
         SetStatusIcon(
             status = set.status,
@@ -346,5 +405,5 @@ internal fun formatDuration(seconds: Int?): String {
     if (seconds == null) return "-"
     val min = seconds / 60
     val sec = seconds % 60
-    return "${min}m ${sec}s"
+    return "$min:%02d".format(sec)
 }
