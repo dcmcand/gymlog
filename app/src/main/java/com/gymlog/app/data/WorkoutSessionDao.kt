@@ -58,6 +58,15 @@ interface WorkoutSessionDao {
     suspend fun getLastCompletedSet(exerciseId: Long): ExerciseSet?
 
     @Query("""
+        SELECT ws.* FROM workout_sessions ws
+        INNER JOIN exercise_sets es ON es.sessionId = ws.id
+        WHERE es.exerciseId = :exerciseId AND es.status != 'PENDING'
+        ORDER BY ws.date DESC
+        LIMIT 1
+    """)
+    suspend fun getLastSessionForExercise(exerciseId: Long): WorkoutSession?
+
+    @Query("""
         SELECT MAX(es.weightKg) as maxWeight, ws.date
         FROM exercise_sets es
         INNER JOIN workout_sessions ws ON es.sessionId = ws.id

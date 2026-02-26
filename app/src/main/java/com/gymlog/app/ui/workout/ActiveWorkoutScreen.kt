@@ -70,6 +70,7 @@ import com.gymlog.app.data.SessionStatus
 import com.gymlog.app.data.SetStatus
 import com.gymlog.app.data.WorkoutSession
 import com.gymlog.app.data.displayName
+import com.gymlog.app.data.suggestWeight
 import com.gymlog.app.ui.common.formatMMSS
 import com.gymlog.app.ui.common.parseMMSS
 import kotlinx.coroutines.delay
@@ -166,6 +167,17 @@ fun ActiveWorkoutScreen(
                 val exercise = exerciseDao.getById(te.exerciseId) ?: continue
                 val lastSet = sessionDao.getLastCompletedSet(te.exerciseId)
 
+                // Compute suggested weight once per exercise
+                val suggestedWeight: Double? = if (exercise.type == ExerciseType.WEIGHT) {
+                    val lastSession = sessionDao.getLastSessionForExercise(te.exerciseId)
+                    if (lastSession != null) {
+                        val prevSets = sessionDao.getSetsForExercise(lastSession.id, te.exerciseId)
+                        suggestWeight(prevSets, lastSession.date) ?: te.targetWeightKg
+                    } else {
+                        te.targetWeightKg
+                    }
+                } else null
+
                 val sets = mutableListOf<ExerciseSet>()
                 for (setNum in 1..te.targetSets) {
                     val set = if (exercise.type == ExerciseType.WEIGHT) {
@@ -173,7 +185,7 @@ fun ActiveWorkoutScreen(
                             sessionId = newSessionId,
                             exerciseId = exercise.id,
                             setNumber = setNum,
-                            weightKg = lastSet?.weightKg ?: te.targetWeightKg,
+                            weightKg = suggestedWeight,
                             repsCompleted = te.targetReps,
                             status = SetStatus.PENDING
                         )
@@ -324,6 +336,16 @@ fun ActiveWorkoutScreen(
                             timerRunning = false
                         }
                     },
+                    onWeightChangedForAll = { newWeight ->
+                        val currentSets = workoutState.getExerciseSets(exercise.id) ?: return@ExerciseCard
+                        scope.launch {
+                            currentSets.forEachIndexed { index, s ->
+                                val updated = s.copy(weightKg = newWeight)
+                                workoutState.updateSet(exercise.id, index, updated)
+                                sessionDao.updateSet(updated)
+                            }
+                        }
+                    },
                     onAddSet = {
                         scope.launch {
                             val currentSets = workoutState.getExerciseSetsCopy(exercise.id)
@@ -374,6 +396,7 @@ private fun ExerciseCard(
     exercise: Exercise,
     sets: List<ExerciseSet>,
     onSetUpdated: (Int, ExerciseSet) -> Unit,
+    onWeightChangedForAll: (Double) -> Unit,
     onAddSet: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -382,6 +405,50 @@ private fun ExerciseCard(
                 exercise.displayName(),
                 style = MaterialTheme.typography.titleMedium
             )
+
+            if (exercise.type == ExerciseType.WEIGHT) {
+                val currentWeight = sets.firstOrNull()?.weightKg ?: 0.0
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                ) {
+                    Text(
+                        "All sets:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            val newWeight = (currentWeight - 2.5).coerceAtLeast(0.0)
+                            onWeightChangedForAll(newWeight)
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Remove, contentDescription = "Decrease all sets by 2.5 kg", modifier = Modifier.size(16.dp))
+                    }
+                    val displayWeight = if (currentWeight == currentWeight.toLong().toDouble()) {
+                        currentWeight.toLong().toString()
+                    } else {
+                        currentWeight.toString()
+                    }
+                    Text(
+                        "$displayWeight kg",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(
+                        onClick = {
+                            val newWeight = currentWeight + 2.5
+                            onWeightChangedForAll(newWeight)
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Increase all sets by 2.5 kg", modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             sets.forEachIndexed { index, set ->
