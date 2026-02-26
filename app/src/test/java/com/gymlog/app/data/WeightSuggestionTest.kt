@@ -159,6 +159,18 @@ class WeightSuggestionTest {
     // -- issue examples --
 
     @Test
+    fun `50kg all easy recent should suggest 52 point 5 kg`() {
+        val today = LocalDate.of(2026, 2, 25)
+        val recent = LocalDate.of(2026, 2, 20)
+        val sets = listOf(
+            makeSet(weightKg = 50.0, status = SetStatus.EASY),
+            makeSet(weightKg = 50.0, status = SetStatus.EASY),
+            makeSet(weightKg = 50.0, status = SetStatus.EASY),
+        )
+        assertEquals(52.5, suggestWeight(sets, recent, today)!!, 0.001)
+    }
+
+    @Test
     fun `issue example - 100kg all easy 5 days ago = 105kg`() {
         val today = LocalDate.of(2026, 2, 25)
         val fiveDaysAgo = LocalDate.of(2026, 2, 20)
@@ -207,6 +219,60 @@ class WeightSuggestionTest {
             makeSet(weightKg = 100.0, status = SetStatus.FAILED),
         )
         assertEquals(80.0, suggestWeight(sets, stale, today)!!, 0.001)
+    }
+
+    // -- minimum 2.5kg step for light weights --
+
+    @Test
+    fun `light weights still increase by at least 2 point 5 kg`() {
+        data class Case(val label: String, val baseWeight: Double, val expected: Double)
+        val today = LocalDate.of(2026, 2, 25)
+        val recent = LocalDate.of(2026, 2, 20)
+        val cases = listOf(
+            Case("10kg all easy", 10.0, 12.5),
+            Case("15kg all easy", 15.0, 17.5),
+            Case("20kg all easy", 20.0, 22.5),
+            Case("22.5kg all easy", 22.5, 25.0),
+        )
+        for (case in cases) {
+            val sets = listOf(makeSet(weightKg = case.baseWeight, status = SetStatus.EASY))
+            assertEquals(
+                case.label,
+                case.expected,
+                suggestWeight(sets, recent, today)!!,
+                0.001
+            )
+        }
+    }
+
+    @Test
+    fun `light weights still decrease by at least 2 point 5 kg`() {
+        data class Case(val label: String, val baseWeight: Double, val expected: Double)
+        val today = LocalDate.of(2026, 2, 25)
+        val recent = LocalDate.of(2026, 2, 20)
+        val cases = listOf(
+            Case("10kg failed", 10.0, 7.5),
+            Case("15kg failed", 15.0, 12.5),
+            Case("20kg failed", 20.0, 17.5),
+        )
+        for (case in cases) {
+            val sets = listOf(makeSet(weightKg = case.baseWeight, status = SetStatus.FAILED))
+            assertEquals(
+                case.label,
+                case.expected,
+                suggestWeight(sets, recent, today)!!,
+                0.001
+            )
+        }
+    }
+
+    @Test
+    fun `very light weight decrease does not go below zero`() {
+        val today = LocalDate.of(2026, 2, 25)
+        val stale = LocalDate.of(2026, 2, 10)
+        val sets = listOf(makeSet(weightKg = 2.5, status = SetStatus.FAILED))
+        // 2.5 * 0.80 = 2.0, rounds to 2.5 (same), forced to 2.5-2.5=0.0
+        assertEquals(0.0, suggestWeight(sets, stale, today)!!, 0.001)
     }
 
     // -- pending sets are filtered out --

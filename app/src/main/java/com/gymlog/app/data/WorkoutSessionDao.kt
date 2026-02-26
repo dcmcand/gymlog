@@ -52,7 +52,7 @@ interface WorkoutSessionDao {
         SELECT es.* FROM exercise_sets es
         INNER JOIN workout_sessions ws ON es.sessionId = ws.id
         WHERE es.exerciseId = :exerciseId AND es.status != 'PENDING'
-        ORDER BY ws.date DESC, es.setNumber ASC
+        ORDER BY ws.date DESC, ws.id DESC, es.setNumber ASC
         LIMIT 1
     """)
     suspend fun getLastCompletedSet(exerciseId: Long): ExerciseSet?
@@ -61,7 +61,7 @@ interface WorkoutSessionDao {
         SELECT ws.* FROM workout_sessions ws
         INNER JOIN exercise_sets es ON es.sessionId = ws.id
         WHERE es.exerciseId = :exerciseId AND es.status != 'PENDING'
-        ORDER BY ws.date DESC
+        ORDER BY ws.date DESC, ws.id DESC
         LIMIT 1
     """)
     suspend fun getLastSessionForExercise(exerciseId: Long): WorkoutSession?

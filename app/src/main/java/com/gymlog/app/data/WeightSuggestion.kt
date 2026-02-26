@@ -35,7 +35,14 @@ fun suggestWeight(
         }
     }
 
-    return roundToNearest2Point5(baseWeight * multiplier)
+    val rounded = roundToNearest2Point5(baseWeight * multiplier)
+    val baseRounded = roundToNearest2Point5(baseWeight)
+
+    return when {
+        multiplier > 1.0 && rounded <= baseRounded -> baseRounded + 2.5
+        multiplier < 1.0 && rounded >= baseRounded -> (baseRounded - 2.5).coerceAtLeast(0.0)
+        else -> rounded
+    }
 }
 
 fun roundToNearest2Point5(kg: Double): Double {
