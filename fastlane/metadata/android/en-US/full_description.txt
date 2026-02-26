@@ -1,0 +1,15 @@
+A simple, privacy-focused workout tracker for Android. No accounts, no cloud, no tracking. Just you and your lifts.
+
+Features:
+
+- Exercise library with weight and cardio exercise types
+- Reusable workout templates with target sets, reps, weight, and distance
+- Real-time workout tracking with Easy/Hard/Fail status per set
+- Auto-adjusted weight suggestions based on previous performance and recency
+- Exercise-level weight control to adjust all sets at once
+- Quick weight adjustments with +/- 2.5 kg buttons
+- Rest timer with 1:30 countdown and vibration alert
+- Calendar view showing workout history by date
+- Exercise progress charts for weight, distance, and time
+- Resume in-progress workouts
+- Fully offline - all data stored locally on your device

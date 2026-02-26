@@ -6,7 +6,15 @@ GymLog lets you define exercises, build reusable workout templates, log sets in 
 
 ## Screenshots
 
-_Coming soon_
+<p align="center">
+  <img src="docs/screenshots/01_workout_list.png" width="22%" alt="Workout list" />
+  &nbsp;
+  <img src="docs/screenshots/02_active_workout.png" width="22%" alt="Active workout tracking" />
+  &nbsp;
+  <img src="docs/screenshots/03_calendar_view.png" width="22%" alt="Calendar view" />
+  &nbsp;
+  <img src="docs/screenshots/04_exercise_progress.png" width="22%" alt="Exercise progress" />
+</p>
 
 ## Features
 
@@ -25,15 +33,18 @@ Templates save time so you can start a session with one tap instead of rebuildin
 
 ### Active Workout Tracking
 Log your workout in real time as you train:
-- **Quick weight adjustments** - tap increment buttons (+1.25, +2.5, +5, +10, +20 kg) to adjust weight between sets without typing
+- **Quick weight adjustments** - +/- 2.5 kg buttons per set, plus "All sets" control to adjust every set at once
 - **Rep tracking** - increment and decrement buttons for fast rep logging
-- **Set status** - mark each set as completed, partial, or failed
-- **Add or remove sets** - adjust on the fly if you want more or fewer sets than planned
-- **Rest timer** - built-in countdown timer with haptic feedback so you know when your rest period is over
-- **Cardio logging** - track distance (meters) and duration (seconds) for cardio exercises
+- **Set status** - mark each set as Easy, Hard, or Failed
+- **Add sets** - add extra sets on the fly if you want more than planned
+- **Rest timer** - built-in 1:30 countdown timer with haptic feedback
+- **Cardio logging** - fixed distance (track time in MM:SS) or fixed time (track distance in meters)
 
-### Auto-fill Last Weight
-When you start a new session, GymLog automatically fills in the weight you used last time for each exercise. No need to remember or scroll through old logs.
+### Auto-Adjust Weight Suggestions
+When you start a new session, GymLog suggests weights based on how your last session went:
+- All sets easy recently? Weight goes up by 5% (minimum 2.5 kg)
+- Sets were hard or you had failures? Weight stays the same or decreases
+- Haven't trained in a while? Weight is reduced to account for detraining
 
 ### Calendar View
 The home screen shows a monthly calendar with indicators on days you worked out. Tap any day to see your workout details for that session, including every set, rep count, weight, and status.
@@ -60,7 +71,7 @@ Go to the **Templates** tab and tap the + button. Name your template (e.g., "Pus
 From the **Calendar** tab, tap the + button to start a new workout. Pick a template, and GymLog loads your exercises with targets pre-filled. If you've done the exercise before, it auto-fills your last weight.
 
 ### 4. Log your sets
-As you train, update the weight and reps for each set. Tap the status button to mark sets as completed, partial, or failed. Use the rest timer between sets.
+As you train, update the weight and reps for each set. Tap Easy, Hard, or Fail to mark each set. Use the rest timer between sets.
 
 ### 5. Finish and review
 Tap "Finish Workout" when you're done. Your session is saved and visible on the calendar. Check the progress chart for any exercise to see how you're improving over time.

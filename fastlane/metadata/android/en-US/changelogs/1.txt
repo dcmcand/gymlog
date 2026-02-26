@@ -1,0 +1,1 @@
+Initial release with workout templates, active workout tracking, weight and cardio exercises, auto-adjusted weight suggestions, rest timer, calendar view, and exercise progress charts.
