@@ -1,0 +1,1 @@
+Auto-adjust weight suggestions based on previous performance and recency. Exercise-level weight control to adjust all sets at once. Fixed same-date session ordering bug. Added screenshots and F-Droid metadata.
