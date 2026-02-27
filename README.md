@@ -91,6 +91,13 @@ Your data stays on your device, period.
 
 ## Installation
 
+### GitHub Releases (sideload)
+
+1. Go to the [Releases](https://github.com/dcmcand/gymlog/releases) page and download the latest `app-release.apk`
+2. On your Android device, open **Settings > Apps > Special app access > Install unknown apps** and allow your browser or file manager to install APKs
+3. Open the downloaded APK and tap **Install**
+4. Once installed, you can revoke the "Install unknown apps" permission if you prefer
+
 ### F-Droid
 _Coming soon_
 
