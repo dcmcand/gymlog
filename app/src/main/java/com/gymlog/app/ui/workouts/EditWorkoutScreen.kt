@@ -299,6 +299,16 @@ private fun ExerciseEntryCard(
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
+                    OutlinedTextField(
+                        value = entry.targetWeightKg?.let {
+                            if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString()
+                        } ?: "",
+                        onValueChange = { onUpdate(entry.copy(targetWeightKg = it.toDoubleOrNull())) },
+                        label = { Text("kg") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
                 }
             } else if (entry.cardioFixedDimension != null) {
                 // New-style cardio: only sets field

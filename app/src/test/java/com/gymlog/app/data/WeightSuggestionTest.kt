@@ -72,12 +72,14 @@ class WeightSuggestionTest {
         val recent = LocalDate.of(2026, 2, 20) // 5 days ago
         val cases = listOf(
             Case("all easy +5%", listOf(SetStatus.EASY, SetStatus.EASY, SetStatus.EASY), 100.0, 105.0),
-            Case("hard stays same", listOf(SetStatus.EASY, SetStatus.HARD), 100.0, 100.0),
+            Case("single hard still increases", listOf(SetStatus.EASY, SetStatus.HARD), 100.0, 105.0),
             Case("partial stays same", listOf(SetStatus.EASY, SetStatus.PARTIAL), 100.0, 100.0),
             Case("failed -5%", listOf(SetStatus.EASY, SetStatus.FAILED), 100.0, 95.0),
             Case("failed beats partial", listOf(SetStatus.PARTIAL, SetStatus.FAILED), 100.0, 95.0),
             Case("failed beats hard", listOf(SetStatus.HARD, SetStatus.FAILED), 100.0, 95.0),
             Case("all easy 80kg", listOf(SetStatus.EASY), 80.0, 85.0),
+            Case("multiple hard stays same", listOf(SetStatus.EASY, SetStatus.HARD, SetStatus.HARD), 100.0, 100.0),
+            Case("single hard among easy increases", listOf(SetStatus.EASY, SetStatus.EASY, SetStatus.HARD), 100.0, 105.0),
         )
         for (case in cases) {
             val sets = case.statuses.map { makeSet(weightKg = case.baseWeight, status = it) }

@@ -11,6 +11,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -34,8 +35,20 @@ import com.gymlog.app.ui.workout.WorkoutPickerScreen
 data class BottomNavItem(val screen: Screen, val label: String, val icon: ImageVector)
 
 @Composable
-fun GymLogNavigation() {
+fun GymLogNavigation(
+    pendingSessionId: Long? = null,
+    onPendingSessionConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
+
+    LaunchedEffect(pendingSessionId) {
+        if (pendingSessionId != null) {
+            navController.navigate(Screen.ResumeWorkout.createRoute(pendingSessionId)) {
+                launchSingleTop = true
+            }
+            onPendingSessionConsumed()
+        }
+    }
 
     val bottomNavItems = listOf(
         BottomNavItem(Screen.Calendar, "Calendar", Icons.Default.DateRange),

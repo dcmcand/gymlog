@@ -1,42 +1,29 @@
 package com.gymlog.app.ui.workout
 
+import android.Manifest
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -52,17 +39,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.gymlog.app.data.CardioFixedDimension
-import com.gymlog.app.data.Exercise
 import com.gymlog.app.data.ExerciseSet
 import com.gymlog.app.data.ExerciseType
 import com.gymlog.app.data.GymLogDatabase
@@ -71,8 +50,7 @@ import com.gymlog.app.data.SetStatus
 import com.gymlog.app.data.WorkoutSession
 import com.gymlog.app.data.displayName
 import com.gymlog.app.data.suggestWeight
-import com.gymlog.app.ui.common.formatMMSS
-import com.gymlog.app.ui.common.parseMMSS
+import com.gymlog.app.notification.RestTimerNotification
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -102,6 +80,26 @@ fun ActiveWorkoutScreen(
     var showRestTimer by remember { mutableStateOf(false) }
     var timerRunning by remember { mutableStateOf(false) }
     var remainingSeconds by remember { mutableIntStateOf(90) }
+    var totalTimerSeconds by remember { mutableIntStateOf(90) }
+
+    // Modal state
+    var selectedSetInfo by remember { mutableStateOf<SelectedSetInfo?>(null) }
+
+    // Notification permission (Android 13+)
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* granted or not - in-app timer works regardless */ }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    fun startTimerNotification(seconds: Int) {
+        val endTimeMs = System.currentTimeMillis() + seconds * 1000L
+        RestTimerNotification.show(context, endTimeMs, sessionId)
+    }
 
     // Countdown effect
     LaunchedEffect(timerRunning) {
@@ -110,6 +108,7 @@ fun ActiveWorkoutScreen(
                 delay(1000L)
                 remainingSeconds--
             }
+            RestTimerNotification.cancel(context)
             // Vibrate when timer reaches zero
             try {
                 val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -247,611 +246,190 @@ fun ActiveWorkoutScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Active Workout") },
-                actions = {
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete workout")
+    // Wrap Scaffold in a Box so the modal can overlay everything
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Active Workout") },
+                    actions = {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete workout")
+                        }
+                    }
+                )
+            },
+            bottomBar = {
+                Column {
+                    if (showRestTimer) {
+                        RestTimerBottomBar(
+                            remainingSeconds = remainingSeconds,
+                            totalSeconds = totalTimerSeconds,
+                            onExtend = {
+                                remainingSeconds += 90
+                                totalTimerSeconds += 90
+                                startTimerNotification(remainingSeconds)
+                            },
+                            onDismiss = {
+                                timerRunning = false
+                                showRestTimer = false
+                                RestTimerNotification.cancel(context)
+                            }
+                        )
+                    }
+                    Surface(tonalElevation = 3.dp) {
+                        Button(
+                            onClick = {
+                                RestTimerNotification.cancel(context)
+                                scope.launch {
+                                    sessionId?.let { sid ->
+                                        val session = sessionDao.getById(sid)
+                                        if (session != null) {
+                                            sessionDao.update(
+                                                session.copy(
+                                                    status = SessionStatus.COMPLETED,
+                                                    completedAt = Instant.now()
+                                                )
+                                            )
+                                        }
+                                    }
+                                    onFinish()
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            enabled = sessionId != null
+                        ) {
+                            Text("Finish Workout")
+                        }
                     }
                 }
-            )
-        },
-        bottomBar = {
-            Surface(tonalElevation = 3.dp) {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            sessionId?.let { sid ->
-                                val session = sessionDao.getById(sid)
-                                if (session != null) {
-                                    sessionDao.update(
-                                        session.copy(
-                                            status = SessionStatus.COMPLETED,
-                                            completedAt = Instant.now()
-                                        )
-                                    )
+            }
+        ) { padding ->
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+                return@Scaffold
+            }
+
+            LazyColumn(
+                modifier = Modifier.padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(
+                    items = workoutState.exercises,
+                    key = { it.id }
+                ) { exercise ->
+                    val sets = workoutState.getExerciseSets(exercise.id)
+                        ?: return@items
+                    CompactExerciseCard(
+                        exercise = exercise,
+                        sets = sets,
+                        onSetTapped = { setIndex, set ->
+                            selectedSetInfo = SelectedSetInfo(
+                                exerciseId = exercise.id,
+                                setIndex = setIndex,
+                                set = set,
+                                exerciseName = exercise.displayName(),
+                                targetReps = set.repsCompleted
+                            )
+                        },
+                        onWeightChangedForAll = { newWeight ->
+                            val currentSets = workoutState.getExerciseSets(exercise.id) ?: return@CompactExerciseCard
+                            scope.launch {
+                                currentSets.forEachIndexed { index, s ->
+                                    val updated = s.copy(weightKg = newWeight)
+                                    workoutState.updateSet(exercise.id, index, updated)
+                                    sessionDao.updateSet(updated)
                                 }
                             }
-                            onFinish()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    enabled = sessionId != null
-                ) {
-                    Text("Finish Workout")
-                }
-            }
-        }
-    ) { padding ->
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-            return@Scaffold
-        }
-
-        LazyColumn(
-            modifier = Modifier.padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (showRestTimer) {
-                item(key = "rest_timer") {
-                    RestTimerBar(
-                        remainingSeconds = remainingSeconds,
-                        timerRunning = timerRunning,
-                        onStart = { timerRunning = true },
-                        onExtend = { remainingSeconds += 90 },
-                        onDismiss = {
-                            timerRunning = false
-                            showRestTimer = false
-                        }
-                    )
-                }
-            }
-            items(
-                items = workoutState.exercises,
-                key = { it.id }
-            ) { exercise ->
-                val sets = workoutState.getExerciseSets(exercise.id)
-                    ?: return@items
-                ExerciseCard(
-                    exercise = exercise,
-                    sets = sets,
-                    onSetUpdated = { setIndex, updatedSet ->
-                        workoutState.updateSet(exercise.id, setIndex, updatedSet)
-                        scope.launch { sessionDao.updateSet(updatedSet) }
-                        if (updatedSet.status != SetStatus.PENDING) {
-                            remainingSeconds = 90
-                            showRestTimer = true
-                            timerRunning = false
-                        }
-                    },
-                    onWeightChangedForAll = { newWeight ->
-                        val currentSets = workoutState.getExerciseSets(exercise.id) ?: return@ExerciseCard
-                        scope.launch {
-                            currentSets.forEachIndexed { index, s ->
-                                val updated = s.copy(weightKg = newWeight)
-                                workoutState.updateSet(exercise.id, index, updated)
-                                sessionDao.updateSet(updated)
+                        },
+                        onSetUpdated = { setIndex, updatedSet ->
+                            workoutState.updateSet(exercise.id, setIndex, updatedSet)
+                            scope.launch { sessionDao.updateSet(updatedSet) }
+                            if (updatedSet.status != SetStatus.PENDING) {
+                                remainingSeconds = 90
+                                totalTimerSeconds = 90
+                                showRestTimer = true
+                                timerRunning = true
+                                startTimerNotification(90)
                             }
-                        }
-                    },
-                    onAddSet = {
-                        scope.launch {
-                            val currentSets = workoutState.getExerciseSetsCopy(exercise.id)
-                            val lastSet = currentSets.lastOrNull()
-                            val newSet = if (exercise.cardioFixedDimension != null) {
-                                // New-style cardio: only copy the variable dimension
-                                when (exercise.cardioFixedDimension) {
-                                    CardioFixedDimension.DISTANCE -> ExerciseSet(
+                        },
+                        onAddSet = {
+                            scope.launch {
+                                val currentSets = workoutState.getExerciseSetsCopy(exercise.id)
+                                val lastSet = currentSets.lastOrNull()
+                                val newSet = if (exercise.cardioFixedDimension != null) {
+                                    // New-style cardio: only copy the variable dimension
+                                    when (exercise.cardioFixedDimension) {
+                                        CardioFixedDimension.DISTANCE -> ExerciseSet(
+                                            sessionId = sessionId!!,
+                                            exerciseId = exercise.id,
+                                            setNumber = currentSets.size + 1,
+                                            durationSec = lastSet?.durationSec,
+                                            status = SetStatus.PENDING
+                                        )
+                                        CardioFixedDimension.TIME -> ExerciseSet(
+                                            sessionId = sessionId!!,
+                                            exerciseId = exercise.id,
+                                            setNumber = currentSets.size + 1,
+                                            distanceM = lastSet?.distanceM,
+                                            status = SetStatus.PENDING
+                                        )
+                                    }
+                                } else {
+                                    // Weight or legacy cardio
+                                    ExerciseSet(
                                         sessionId = sessionId!!,
                                         exerciseId = exercise.id,
                                         setNumber = currentSets.size + 1,
+                                        weightKg = lastSet?.weightKg,
+                                        repsCompleted = lastSet?.repsCompleted,
+                                        distanceM = lastSet?.distanceM,
                                         durationSec = lastSet?.durationSec,
                                         status = SetStatus.PENDING
                                     )
-                                    CardioFixedDimension.TIME -> ExerciseSet(
-                                        sessionId = sessionId!!,
-                                        exerciseId = exercise.id,
-                                        setNumber = currentSets.size + 1,
-                                        distanceM = lastSet?.distanceM,
-                                        status = SetStatus.PENDING
-                                    )
                                 }
-                            } else {
-                                // Weight or legacy cardio
-                                ExerciseSet(
-                                    sessionId = sessionId!!,
-                                    exerciseId = exercise.id,
-                                    setNumber = currentSets.size + 1,
-                                    weightKg = lastSet?.weightKg,
-                                    repsCompleted = lastSet?.repsCompleted,
-                                    distanceM = lastSet?.distanceM,
-                                    durationSec = lastSet?.durationSec,
-                                    status = SetStatus.PENDING
-                                )
+                                val insertedId = sessionDao.insertSet(newSet)
+                                workoutState.addSet(exercise.id, newSet.copy(id = insertedId))
                             }
-                            val insertedId = sessionDao.insertSet(newSet)
-                            workoutState.addSet(exercise.id, newSet.copy(id = insertedId))
                         }
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExerciseCard(
-    exercise: Exercise,
-    sets: List<ExerciseSet>,
-    onSetUpdated: (Int, ExerciseSet) -> Unit,
-    onWeightChangedForAll: (Double) -> Unit,
-    onAddSet: () -> Unit
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                exercise.displayName(),
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            if (exercise.type == ExerciseType.WEIGHT) {
-                val currentWeight = sets.firstOrNull()?.weightKg ?: 0.0
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
-                ) {
-                    Text(
-                        "All sets:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(
-                        onClick = {
-                            val newWeight = (currentWeight - 2.5).coerceAtLeast(0.0)
-                            onWeightChangedForAll(newWeight)
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.Default.Remove, contentDescription = "Decrease all sets by 2.5 kg", modifier = Modifier.size(16.dp))
-                    }
-                    val displayWeight = if (currentWeight == currentWeight.toLong().toDouble()) {
-                        currentWeight.toLong().toString()
-                    } else {
-                        currentWeight.toString()
-                    }
-                    Text(
-                        "$displayWeight kg",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(
-                        onClick = {
-                            val newWeight = currentWeight + 2.5
-                            onWeightChangedForAll(newWeight)
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Increase all sets by 2.5 kg", modifier = Modifier.size(16.dp))
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            sets.forEachIndexed { index, set ->
-                if (exercise.type == ExerciseType.WEIGHT) {
-                    WeightSetRow(
-                        set = set,
-                        setIndex = index + 1,
-                        onUpdate = { updated -> onSetUpdated(index, updated) }
-                    )
-                } else if (exercise.cardioFixedDimension != null) {
-                    NewCardioSetRow(
-                        set = set,
-                        setIndex = index + 1,
-                        fixedDimension = exercise.cardioFixedDimension,
-                        onUpdate = { updated -> onSetUpdated(index, updated) }
-                    )
-                } else {
-                    CardioSetRow(
-                        set = set,
-                        setIndex = index + 1,
-                        onUpdate = { updated -> onSetUpdated(index, updated) }
                     )
                 }
-                if (index < sets.size - 1) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                }
-            }
-
-            TextButton(onClick = onAddSet) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Add Set")
             }
         }
-    }
-}
 
-@Composable
-private fun WeightSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet) -> Unit) {
-    val weightText = set.weightKg?.let {
-        if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString()
-    } ?: ""
-    var weightFieldValue by remember {
-        mutableStateOf(TextFieldValue(weightText))
-    }
-    var selectOnNextChange by remember { mutableStateOf(false) }
+        // Modal overlay - outside Scaffold so it covers everything
+        selectedSetInfo?.let { info ->
+            SetCompletionModal(
+                info = info,
+                onComplete = { status, reps ->
+                    val updatedSet = info.set.copy(
+                        status = status,
+                        repsCompleted = reps
+                    )
+                    workoutState.updateSet(info.exerciseId, info.setIndex, updatedSet)
+                    scope.launch { sessionDao.updateSet(updatedSet) }
 
-    // Sync from external changes (e.g., +/- 2.5kg buttons) without resetting cursor during typing
-    LaunchedEffect(set.weightKg) {
-        val currentParsed = weightFieldValue.text.toDoubleOrNull()
-        if (currentParsed != set.weightKg) {
-            val newText = set.weightKg?.let {
-                if (it == it.toLong().toDouble()) it.toLong().toString() else it.toString()
-            } ?: ""
-            weightFieldValue = TextFieldValue(newText, TextRange(newText.length))
-        }
-    }
+                    // Auto-start rest timer
+                    remainingSeconds = 90
+                    totalTimerSeconds = 90
+                    showRestTimer = true
+                    timerRunning = true
+                    startTimerNotification(90)
 
-    Column {
-        // Row 1: set number, weight field, status buttons
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                "$setIndex",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.width(24.dp)
+                    selectedSetInfo = null
+                },
+                onDismiss = { selectedSetInfo = null }
             )
-            OutlinedTextField(
-                value = weightFieldValue,
-                onValueChange = { newValue ->
-                    if (selectOnNextChange && newValue.selection.collapsed
-                        && newValue.text == weightFieldValue.text) {
-                        selectOnNextChange = false
-                        weightFieldValue = newValue.copy(
-                            selection = TextRange(0, newValue.text.length)
-                        )
-                    } else {
-                        selectOnNextChange = false
-                        weightFieldValue = newValue
-                        val parsed = newValue.text.toDoubleOrNull()
-                        if (parsed != null || newValue.text.isEmpty()) {
-                            onUpdate(set.copy(weightKg = parsed))
-                        }
-                    }
-                },
-                label = { Text("kg") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier
-                    .weight(1f)
-                    .onFocusChanged { focusState ->
-                        if (focusState.isFocused) {
-                            selectOnNextChange = true
-                            weightFieldValue = weightFieldValue.copy(
-                                selection = TextRange(0, weightFieldValue.text.length)
-                            )
-                        }
-                    },
-                singleLine = true
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            SetStatusButtons(
-                status = set.status,
-                onStatusChange = { status -> onUpdate(set.copy(status = status)) }
-            )
-        }
-        // Row 2: weight +/- 2.5 kg and rep +/- buttons
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 24.dp, top = 4.dp).fillMaxWidth()
-        ) {
-            IconButton(
-                onClick = {
-                    val newWeight = ((set.weightKg ?: 0.0) - 2.5).coerceAtLeast(0.0)
-                    onUpdate(set.copy(weightKg = newWeight))
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.Remove,
-                    contentDescription = "Decrease weight by 2.5 kg",
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Text(
-                "2.5 kg",
-                style = MaterialTheme.typography.labelSmall
-            )
-            IconButton(
-                onClick = {
-                    val newWeight = (set.weightKg ?: 0.0) + 2.5
-                    onUpdate(set.copy(weightKg = newWeight))
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Increase weight by 2.5 kg",
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            IconButton(
-                onClick = {
-                    val newReps = ((set.repsCompleted ?: 1) - 1).coerceAtLeast(0)
-                    onUpdate(set.copy(repsCompleted = newReps))
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.Remove,
-                    contentDescription = "Decrease reps",
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Text("${set.repsCompleted ?: 0}", style = MaterialTheme.typography.bodyLarge)
-            IconButton(
-                onClick = {
-                    val newReps = (set.repsCompleted ?: 0) + 1
-                    onUpdate(set.copy(repsCompleted = newReps))
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Increase reps",
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun NewCardioSetRow(
-    set: ExerciseSet,
-    setIndex: Int,
-    fixedDimension: CardioFixedDimension,
-    onUpdate: (ExerciseSet) -> Unit
-) {
-    var timeText by remember {
-        mutableStateOf(formatMMSS(set.durationSec))
-    }
-    var distanceText by remember {
-        mutableStateOf(set.distanceM?.toString() ?: "")
-    }
-
-    // Sync from external changes
-    LaunchedEffect(set.durationSec) {
-        val newFormatted = formatMMSS(set.durationSec)
-        if (newFormatted != timeText) {
-            timeText = newFormatted
-        }
-    }
-    LaunchedEffect(set.distanceM) {
-        val newText = set.distanceM?.toString() ?: ""
-        if (newText != distanceText) {
-            distanceText = newText
-        }
-    }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            "$setIndex",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.width(24.dp)
-        )
-        when (fixedDimension) {
-            CardioFixedDimension.DISTANCE -> {
-                // Fixed distance: track time
-                OutlinedTextField(
-                    value = timeText,
-                    onValueChange = { newValue ->
-                        timeText = newValue
-                        val parsed = parseMMSS(newValue)
-                        if (parsed != null) {
-                            onUpdate(set.copy(durationSec = parsed))
-                        }
-                    },
-                    label = { Text("MM:SS") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            CardioFixedDimension.TIME -> {
-                // Fixed time: track distance
-                OutlinedTextField(
-                    value = distanceText,
-                    onValueChange = { newValue ->
-                        distanceText = newValue
-                        val parsed = newValue.toIntOrNull()
-                        if (parsed != null || newValue.isEmpty()) {
-                            onUpdate(set.copy(distanceM = parsed))
-                        }
-                    },
-                    label = { Text("m") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-        SetStatusButtons(
-            status = set.status,
-            onStatusChange = { status -> onUpdate(set.copy(status = status)) }
-        )
-    }
-}
-
-@Composable
-private fun CardioSetRow(set: ExerciseSet, setIndex: Int, onUpdate: (ExerciseSet) -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            "Set $setIndex",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.width(40.dp)
-        )
-        OutlinedTextField(
-            value = set.distanceM?.toString() ?: "",
-            onValueChange = { onUpdate(set.copy(distanceM = it.toIntOrNull())) },
-            label = { Text("m") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f),
-            singleLine = true
-        )
-        OutlinedTextField(
-            value = set.durationSec?.toString() ?: "",
-            onValueChange = { onUpdate(set.copy(durationSec = it.toIntOrNull())) },
-            label = { Text("sec") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.weight(1f),
-            singleLine = true
-        )
-        SetStatusButtons(
-            status = set.status,
-            onStatusChange = { status -> onUpdate(set.copy(status = status)) }
-        )
-    }
-}
-
-@Composable
-private fun SetStatusButtons(status: SetStatus, onStatusChange: (SetStatus) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        StatusChip(
-            selected = status == SetStatus.EASY,
-            onClick = { onStatusChange(SetStatus.EASY) },
-            icon = Icons.Default.ThumbUp,
-            label = "Easy",
-            selectedColor = MaterialTheme.colorScheme.primary,
-            selectedContentColor = MaterialTheme.colorScheme.onPrimary
-        )
-        StatusChip(
-            selected = status == SetStatus.HARD,
-            onClick = { onStatusChange(SetStatus.HARD) },
-            icon = Icons.Default.Whatshot,
-            label = "Hard",
-            selectedColor = MaterialTheme.colorScheme.tertiary,
-            selectedContentColor = MaterialTheme.colorScheme.onTertiary
-        )
-        StatusChip(
-            selected = status == SetStatus.FAILED,
-            onClick = { onStatusChange(SetStatus.FAILED) },
-            icon = Icons.Default.Close,
-            label = "Fail",
-            selectedColor = MaterialTheme.colorScheme.error,
-            selectedContentColor = MaterialTheme.colorScheme.onError
-        )
-    }
-}
-
-@Composable
-private fun StatusChip(
-    selected: Boolean,
-    onClick: () -> Unit,
-    icon: ImageVector,
-    label: String,
-    selectedColor: Color,
-    selectedContentColor: Color
-) {
-    Surface(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.small,
-        color = if (selected) selectedColor else Color.Transparent,
-        contentColor = if (selected) selectedContentColor
-            else MaterialTheme.colorScheme.onSurfaceVariant
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Icon(icon, contentDescription = label, modifier = Modifier.size(14.dp))
-            if (selected) {
-                Text(label, style = MaterialTheme.typography.labelSmall)
-            }
-        }
-    }
-}
-
-@Composable
-private fun RestTimerBar(
-    remainingSeconds: Int,
-    timerRunning: Boolean,
-    onStart: () -> Unit,
-    onExtend: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val minutes = remainingSeconds / 60
-    val seconds = remainingSeconds % 60
-    val timeText = "%d:%02d".format(minutes, seconds)
-
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (!timerRunning && remainingSeconds > 0) {
-                Button(onClick = onStart) {
-                    Text("Rest $timeText")
-                }
-            } else if (remainingSeconds > 0) {
-                Text(
-                    text = timeText,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                TextButton(onClick = onExtend) {
-                    Text("+1:30")
-                }
-            } else {
-                Text(
-                    text = "Rest Complete",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Dismiss timer",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
         }
     }
 }

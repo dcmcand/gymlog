@@ -20,6 +20,7 @@ fun suggestWeight(
     val hasAnyFailed = completedSets.any { it.status == SetStatus.FAILED }
     val hasAnyPartial = completedSets.any { it.status == SetStatus.PARTIAL }
     val hasAnyHard = completedSets.any { it.status == SetStatus.HARD }
+    val hardCount = completedSets.count { it.status == SetStatus.HARD }
 
     val multiplier = if (isStale) {
         when {
@@ -30,7 +31,8 @@ fun suggestWeight(
     } else {
         when {
             hasAnyFailed -> 0.95
-            hasAnyHard || hasAnyPartial -> 1.0
+            hasAnyPartial -> 1.0
+            hardCount > 1 -> 1.0
             else -> 1.05
         }
     }
