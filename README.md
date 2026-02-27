@@ -33,12 +33,13 @@ Templates save time so you can start a session with one tap instead of rebuildin
 
 ### Active Workout Tracking
 Log your workout in real time as you train:
-- **Quick weight adjustments** - +/- 2.5 kg buttons per set, plus "All sets" control to adjust every set at once
-- **Rep tracking** - increment and decrement buttons for fast rep logging
-- **Set status** - mark each set as Easy, Hard, or Failed
+- **Compact exercise cards** - each exercise shown as a card with set summary and weight control
+- **Set circles** - tap a set circle to open the completion modal, colored by status (green for easy, orange for hard, grey for incomplete)
+- **Set completion modal** - Easy/Hard/Incomplete buttons, with a rep counter for incomplete sets
+- **Quick weight adjustments** - +/- 2.5 kg buttons adjust all sets at once
+- **Rest timer** - bottom bar with countdown, +1:30 extend button, and persistent notification
 - **Add sets** - add extra sets on the fly if you want more than planned
-- **Rest timer** - built-in 1:30 countdown timer with haptic feedback
-- **Cardio logging** - fixed distance (track time in MM:SS) or fixed time (track distance in meters)
+- **Cardio logging** - fixed distance (track time) or fixed time (track distance)
 
 ### Auto-Adjust Weight Suggestions
 When you start a new session, GymLog suggests weights based on how your last session went:
@@ -71,7 +72,7 @@ Go to the **Templates** tab and tap the + button. Name your template (e.g., "Pus
 From the **Calendar** tab, tap the + button to start a new workout. Pick a template, and GymLog loads your exercises with targets pre-filled. If you've done the exercise before, it auto-fills your last weight.
 
 ### 4. Log your sets
-As you train, update the weight and reps for each set. Tap Easy, Hard, or Fail to mark each set. Use the rest timer between sets.
+As you train, tap a set circle to open the completion modal. Choose Easy, Hard, or Incomplete for each set. Adjust weight with the +/- buttons on each card, and use the rest timer between sets.
 
 ### 5. Finish and review
 Tap "Finish Workout" when you're done. Your session is saved and visible on the calendar. Check the progress chart for any exercise to see how you're improving over time.

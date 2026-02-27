@@ -1,0 +1,5 @@
+- Redesigned active workout screen with compact exercise cards
+- Set completion modal with Easy/Hard/Incomplete buttons and rep counter
+- Set circles colored by status (green, orange, grey)
+- Rest timer bottom bar with countdown, extend button, and persistent notification
+- Custom green GymLog theme
