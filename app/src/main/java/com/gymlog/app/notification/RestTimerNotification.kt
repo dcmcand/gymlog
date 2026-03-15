@@ -1,5 +1,6 @@
 package com.gymlog.app.notification
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -11,15 +12,15 @@ import com.gymlog.app.R
 
 object RestTimerNotification {
 
-    private const val CHANNEL_ID = "rest_timer"
-    private const val NOTIFICATION_ID = 1
+    const val CHANNEL_ID = "rest_timer"
+    const val NOTIFICATION_ID = 1
     const val EXTRA_SESSION_ID = "rest_timer_session_id"
 
     fun createChannel(context: Context) {
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Rest Timer",
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
             description = "Countdown during rest between sets"
             lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
@@ -28,7 +29,7 @@ object RestTimerNotification {
         manager.createNotificationChannel(channel)
     }
 
-    fun show(context: Context, endTimeMs: Long, sessionId: Long? = null) {
+    fun buildNotification(context: Context, endTimeMs: Long, sessionId: Long? = null): Notification {
         val tapIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             if (sessionId != null) putExtra(EXTRA_SESSION_ID, sessionId)
@@ -40,7 +41,7 @@ object RestTimerNotification {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Rest Timer")
             .setContentText("Rest between sets")
@@ -52,7 +53,33 @@ object RestTimerNotification {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
             .build()
+    }
 
+    fun buildCompletedNotification(context: Context, sessionId: Long? = null): Notification {
+        val tapIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            if (sessionId != null) putExtra(EXTRA_SESSION_ID, sessionId)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Rest Complete")
+            .setContentText("Time to start your next set")
+            .setOngoing(false)
+            .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(pendingIntent)
+            .build()
+    }
+
+    fun show(context: Context, endTimeMs: Long, sessionId: Long? = null) {
+        val notification = buildNotification(context, endTimeMs, sessionId)
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, notification)
     }
