@@ -205,6 +205,7 @@ fun ActiveWorkoutScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteDialog = false
+                    RestTimerService.stop(context)
                     scope.launch {
                         sessionId?.let { sessionDao.deleteById(it) }
                         onDelete()
