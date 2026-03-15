@@ -222,15 +222,18 @@ class RestTimerService : Service() {
     }
 
     private fun vibrate() {
-        val pattern = longArrayOf(0, 300, 200, 300)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(VibratorManager::class.java)
-            val vibrator = vibratorManager.defaultVibrator
-            vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
-        } else {
-            @Suppress("DEPRECATION")
-            val vibrator = getSystemService(Vibrator::class.java)
-            vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+        try {
+            val pattern = longArrayOf(0, 300, 200, 300)
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = getSystemService(VibratorManager::class.java)
+                vibratorManager?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Vibrator::class.java)
+            }
+            vibrator?.vibrate(VibrationEffect.createWaveform(pattern, -1))
+        } catch (_: Exception) {
+            // Vibration not available
         }
     }
 

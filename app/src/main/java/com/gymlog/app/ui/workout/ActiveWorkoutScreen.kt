@@ -2,9 +2,6 @@ package com.gymlog.app.ui.workout
 
 import android.Manifest
 import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -31,8 +28,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,8 +47,7 @@ import com.gymlog.app.data.SetStatus
 import com.gymlog.app.data.WorkoutSession
 import com.gymlog.app.data.displayName
 import com.gymlog.app.data.suggestWeight
-import com.gymlog.app.notification.RestTimerNotification
-import kotlinx.coroutines.delay
+import com.gymlog.app.service.RestTimerService
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -76,11 +72,9 @@ fun ActiveWorkoutScreen(
     var isLoading by remember { mutableStateOf(true) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Rest timer state
-    var showRestTimer by remember { mutableStateOf(false) }
-    var timerRunning by remember { mutableStateOf(false) }
-    var remainingSeconds by remember { mutableIntStateOf(90) }
-    var totalTimerSeconds by remember { mutableIntStateOf(90) }
+    // Rest timer state from service
+    val timerState by RestTimerService.timerState.collectAsState()
+    val showRestTimer = timerState.isRunning || (timerState.sessionId != null && timerState.remainingSeconds == 0)
 
     // Modal state
     var selectedSetInfo by remember { mutableStateOf<SelectedSetInfo?>(null) }
@@ -93,44 +87,6 @@ fun ActiveWorkoutScreen(
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-
-    fun startTimerNotification(seconds: Int) {
-        val endTimeMs = System.currentTimeMillis() + seconds * 1000L
-        RestTimerNotification.show(context, endTimeMs, sessionId)
-    }
-
-    // Countdown effect
-    LaunchedEffect(timerRunning) {
-        if (timerRunning) {
-            while (remainingSeconds > 0) {
-                delay(1000L)
-                remainingSeconds--
-            }
-            RestTimerNotification.cancel(context)
-            // Vibrate when timer reaches zero
-            try {
-                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val vibratorManager = context.getSystemService(VibratorManager::class.java)
-                    vibratorManager?.defaultVibrator
-                } else {
-                    @Suppress("DEPRECATION")
-                    context.getSystemService(Vibrator::class.java)
-                }
-                vibrator?.vibrate(
-                    VibrationEffect.createWaveform(
-                        longArrayOf(0, 300, 200, 300),
-                        -1
-                    )
-                )
-            } catch (_: Exception) {
-                // Vibration not available
-            }
-            // Brief "Rest Complete" display, then auto-hide
-            delay(2000L)
-            timerRunning = false
-            showRestTimer = false
         }
     }
 
@@ -263,24 +219,20 @@ fun ActiveWorkoutScreen(
                 Column {
                     if (showRestTimer) {
                         RestTimerBottomBar(
-                            remainingSeconds = remainingSeconds,
-                            totalSeconds = totalTimerSeconds,
+                            remainingSeconds = timerState.remainingSeconds,
+                            totalSeconds = timerState.totalSeconds,
                             onExtend = {
-                                remainingSeconds += 90
-                                totalTimerSeconds += 90
-                                startTimerNotification(remainingSeconds)
+                                RestTimerService.extend(context, 90)
                             },
                             onDismiss = {
-                                timerRunning = false
-                                showRestTimer = false
-                                RestTimerNotification.cancel(context)
+                                RestTimerService.stop(context)
                             }
                         )
                     }
                     Surface(tonalElevation = 3.dp) {
                         Button(
                             onClick = {
-                                RestTimerNotification.cancel(context)
+                                RestTimerService.stop(context)
                                 scope.launch {
                                     sessionId?.let { sid ->
                                         val session = sessionDao.getById(sid)
@@ -356,11 +308,7 @@ fun ActiveWorkoutScreen(
                             workoutState.updateSet(exercise.id, setIndex, updatedSet)
                             scope.launch { sessionDao.updateSet(updatedSet) }
                             if (updatedSet.status != SetStatus.PENDING) {
-                                remainingSeconds = 90
-                                totalTimerSeconds = 90
-                                showRestTimer = true
-                                timerRunning = true
-                                startTimerNotification(90)
+                                sessionId?.let { RestTimerService.start(context, 90, it) }
                             }
                         },
                         onAddSet = {
@@ -420,11 +368,7 @@ fun ActiveWorkoutScreen(
                     scope.launch { sessionDao.updateSet(updatedSet) }
 
                     // Auto-start rest timer
-                    remainingSeconds = 90
-                    totalTimerSeconds = 90
-                    showRestTimer = true
-                    timerRunning = true
-                    startTimerNotification(90)
+                    sessionId?.let { RestTimerService.start(context, 90, it) }
 
                     selectedSetInfo = null
                 },
