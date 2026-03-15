@@ -104,6 +104,21 @@ fun ActiveWorkoutScreen(
             }
             isLoading = false
         } else if (workoutId != null) {
+            // Check for existing in-progress session first
+            val existingSession = sessionDao.getInProgressSession()
+            if (existingSession != null) {
+                sessionId = existingSession.id
+                val existingSets = sessionDao.getSetsForSession(existingSession.id)
+                val exerciseIds = existingSets.map { it.exerciseId }.distinct()
+                for (eid in exerciseIds) {
+                    val exercise = exerciseDao.getById(eid) ?: continue
+                    val exerciseSets = existingSets.filter { it.exerciseId == eid }
+                    workoutState.addExercise(exercise, exerciseSets)
+                }
+                isLoading = false
+                return@LaunchedEffect
+            }
+
             // Create new session from workout
             val workout = workoutDao.getById(workoutId) ?: return@LaunchedEffect
             val workoutExercises = workoutDao.getExercisesForWorkout(workoutId)
