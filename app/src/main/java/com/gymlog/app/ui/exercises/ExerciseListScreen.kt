@@ -159,10 +159,17 @@ private fun AddExerciseDialog(onDismiss: () -> Unit, onConfirm: (Exercise) -> Un
     var fixedValueText by remember { mutableStateOf("") }
     var distanceDisplayKm by remember { mutableStateOf(true) }
     var levelText by remember { mutableStateOf("") }
+    var incrementText by remember { mutableStateOf("2.5") }
+
+    fun parsedIncrement(): Double? = incrementText.toDoubleOrNull()?.takeIf { it > 0 }
 
     fun buildExercise(): Exercise {
         if (selectedType == ExerciseType.WEIGHT) {
-            return Exercise(name = name.trim(), type = ExerciseType.WEIGHT)
+            return Exercise(
+                name = name.trim(),
+                type = ExerciseType.WEIGHT,
+                weightIncrementKg = parsedIncrement() ?: 2.5
+            )
         }
         val rawValue = fixedValueText.toIntOrNull()
         val fixedValue = when {
@@ -206,6 +213,19 @@ private fun AddExerciseDialog(onDismiss: () -> Unit, onConfirm: (Exercise) -> Un
                         selected = selectedType == ExerciseType.CARDIO,
                         onClick = { selectedType = ExerciseType.CARDIO },
                         label = { Text("Cardio") }
+                    )
+                }
+
+                if (selectedType == ExerciseType.WEIGHT) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = incrementText,
+                        onValueChange = { incrementText = it },
+                        label = { Text("Increment (kg)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        isError = parsedIncrement() == null,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
@@ -288,8 +308,10 @@ private fun AddExerciseDialog(onDismiss: () -> Unit, onConfirm: (Exercise) -> Un
             }
         },
         confirmButton = {
-            val isValid = name.isNotBlank() && (selectedType == ExerciseType.WEIGHT ||
-                    fixedValueText.toIntOrNull() != null)
+            val isValid = name.isNotBlank() && when (selectedType) {
+                ExerciseType.WEIGHT -> parsedIncrement() != null
+                ExerciseType.CARDIO -> fixedValueText.toIntOrNull() != null
+            }
             TextButton(
                 onClick = { onConfirm(buildExercise()) },
                 enabled = isValid

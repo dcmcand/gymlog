@@ -7,7 +7,8 @@ import kotlin.math.roundToLong
 fun suggestWeight(
     lastSessionSets: List<ExerciseSet>,
     lastSessionDate: LocalDate,
-    today: LocalDate = LocalDate.now()
+    today: LocalDate = LocalDate.now(),
+    incrementKg: Double = 2.5
 ): Double? {
     val completedSets = lastSessionSets.filter { it.status != SetStatus.PENDING }
     if (completedSets.isEmpty()) return null
@@ -37,16 +38,16 @@ fun suggestWeight(
         }
     }
 
-    val rounded = roundToNearest2Point5(baseWeight * multiplier)
-    val baseRounded = roundToNearest2Point5(baseWeight)
+    val rounded = roundToNearest(baseWeight * multiplier, incrementKg)
+    val baseRounded = roundToNearest(baseWeight, incrementKg)
 
     return when {
-        multiplier > 1.0 && rounded <= baseRounded -> baseRounded + 2.5
-        multiplier < 1.0 && rounded >= baseRounded -> (baseRounded - 2.5).coerceAtLeast(0.0)
+        multiplier > 1.0 && rounded <= baseRounded -> baseRounded + incrementKg
+        multiplier < 1.0 && rounded >= baseRounded -> (baseRounded - incrementKg).coerceAtLeast(0.0)
         else -> rounded
     }
 }
 
-fun roundToNearest2Point5(kg: Double): Double {
-    return (kg / 2.5).roundToLong() * 2.5
+fun roundToNearest(kg: Double, step: Double): Double {
+    return (kg / step).roundToLong() * step
 }
