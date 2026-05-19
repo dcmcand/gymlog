@@ -17,15 +17,18 @@ object RestTimerNotification {
     const val EXTRA_SESSION_ID = "rest_timer_session_id"
 
     fun createChannel(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        // Delete old channel to pick up importance changes (Android caches channel settings)
+        manager.deleteNotificationChannel(CHANNEL_ID)
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Rest Timer",
-            NotificationManager.IMPORTANCE_DEFAULT
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Countdown during rest between sets"
             lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+            setSound(null, null)
         }
-        val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)
     }
 

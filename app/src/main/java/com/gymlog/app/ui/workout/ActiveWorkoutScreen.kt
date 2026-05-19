@@ -142,7 +142,7 @@ fun ActiveWorkoutScreen(
                     val lastSession = sessionDao.getLastSessionForExercise(te.exerciseId)
                     if (lastSession != null) {
                         val prevSets = sessionDao.getSetsForExercise(lastSession.id, te.exerciseId)
-                        suggestWeight(prevSets, lastSession.date) ?: te.targetWeightKg
+                        suggestWeight(prevSets, lastSession.date, incrementKg = exercise.weightIncrementKg) ?: te.targetWeightKg
                     } else {
                         te.targetWeightKg
                     }

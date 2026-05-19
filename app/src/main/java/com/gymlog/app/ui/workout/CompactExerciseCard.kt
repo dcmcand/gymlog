@@ -134,7 +134,7 @@ private fun WeightExerciseContent(
     ) {
         IconButton(
             onClick = {
-                val newWeight = (currentWeight - 2.5).coerceAtLeast(0.0)
+                val newWeight = (currentWeight - exercise.weightIncrementKg).coerceAtLeast(0.0)
                 onWeightChangedForAll(newWeight)
             },
             modifier = Modifier.size(36.dp)
@@ -148,7 +148,7 @@ private fun WeightExerciseContent(
         )
         IconButton(
             onClick = {
-                val newWeight = currentWeight + 2.5
+                val newWeight = currentWeight + exercise.weightIncrementKg
                 onWeightChangedForAll(newWeight)
             },
             modifier = Modifier.size(36.dp)

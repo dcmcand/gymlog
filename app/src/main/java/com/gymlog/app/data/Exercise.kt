@@ -13,7 +13,9 @@ data class Exercise(
     val fixedValue: Int? = null,
     val level: Int? = null,
     @ColumnInfo(defaultValue = "0")
-    val distanceDisplayKm: Boolean = false
+    val distanceDisplayKm: Boolean = false,
+    @ColumnInfo(defaultValue = "2.5")
+    val weightIncrementKg: Double = 2.5
 )
 
 fun Exercise.displayName(): String {

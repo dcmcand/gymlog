@@ -7,33 +7,41 @@ import java.time.LocalDate
 
 class WeightSuggestionTest {
 
-    // -- roundToNearest2Point5 --
+    // -- roundToNearest --
 
     @Test
-    fun `roundToNearest2Point5 - table driven`() {
-        data class Case(val input: Double, val expected: Double)
+    fun `roundToNearest - table driven`() {
+        data class Case(val input: Double, val step: Double, val expected: Double)
         val cases = listOf(
-            Case(0.0, 0.0),
-            Case(2.5, 2.5),
-            Case(5.0, 5.0),
-            Case(1.0, 0.0),
-            Case(1.25, 2.5),
-            Case(1.24, 0.0),
-            Case(1.26, 2.5),
-            Case(3.75, 5.0),
-            Case(6.3, 7.5),
-            Case(100.0, 100.0),
-            Case(101.0, 100.0),
-            Case(101.25, 102.5),
-            Case(101.24, 100.0),
-            Case(72.0, 72.5),
-            Case(73.75, 75.0),
+            Case(0.0, 2.5, 0.0),
+            Case(2.5, 2.5, 2.5),
+            Case(5.0, 2.5, 5.0),
+            Case(1.0, 2.5, 0.0),
+            Case(1.25, 2.5, 2.5),
+            Case(1.24, 2.5, 0.0),
+            Case(1.26, 2.5, 2.5),
+            Case(3.75, 2.5, 5.0),
+            Case(6.3, 2.5, 7.5),
+            Case(100.0, 2.5, 100.0),
+            Case(101.0, 2.5, 100.0),
+            Case(101.25, 2.5, 102.5),
+            Case(101.24, 2.5, 100.0),
+            Case(72.0, 2.5, 72.5),
+            Case(73.75, 2.5, 75.0),
+            // step = 1.0
+            Case(10.0, 1.0, 10.0),
+            Case(10.4, 1.0, 10.0),
+            Case(10.6, 1.0, 11.0),
+            // step = 2.0
+            Case(11.0, 2.0, 12.0),
+            Case(10.9, 2.0, 10.0),
+            Case(13.1, 2.0, 14.0),
         )
         for (case in cases) {
             assertEquals(
-                "roundToNearest2Point5(${case.input})",
+                "roundToNearest(${case.input}, ${case.step})",
                 case.expected,
-                roundToNearest2Point5(case.input),
+                roundToNearest(case.input, case.step),
                 0.001
             )
         }
@@ -275,6 +283,49 @@ class WeightSuggestionTest {
         val sets = listOf(makeSet(weightKg = 2.5, status = SetStatus.FAILED))
         // 2.5 * 0.80 = 2.0, rounds to 2.5 (same), forced to 2.5-2.5=0.0
         assertEquals(0.0, suggestWeight(sets, stale, today)!!, 0.001)
+    }
+
+    // -- custom increment --
+
+    @Test
+    fun `custom increment - step up uses increment for nudge`() {
+        val today = LocalDate.of(2026, 2, 25)
+        val recent = LocalDate.of(2026, 2, 20)
+        // 20kg easy -> multiplier 1.05 -> 21.0, rounds to 21.0 with step=1.0, > baseRounded(20) -> 21.0
+        val sets = listOf(makeSet(weightKg = 20.0, status = SetStatus.EASY))
+        assertEquals(21.0, suggestWeight(sets, recent, today, incrementKg = 1.0)!!, 0.001)
+    }
+
+    @Test
+    fun `custom increment - step up forced nudge when rounding flattens`() {
+        val today = LocalDate.of(2026, 2, 25)
+        val recent = LocalDate.of(2026, 2, 20)
+        // 10kg easy -> 10.5, rounds to 10.0 with step=2.0, <= baseRounded(10) -> nudge to 12.0
+        val sets = listOf(makeSet(weightKg = 10.0, status = SetStatus.EASY))
+        assertEquals(12.0, suggestWeight(sets, recent, today, incrementKg = 2.0)!!, 0.001)
+    }
+
+    @Test
+    fun `custom increment - step down forced nudge`() {
+        val today = LocalDate.of(2026, 2, 25)
+        val stale = LocalDate.of(2026, 2, 10)
+        // 20kg failed, stale -> 0.80 -> 16, baseRounded=20 with step=2 -> rounded 16 < 20 OK -> 16
+        // Use a case where rounding flattens instead: 11kg failed stale -> 8.8 rounds to 8 step=2; baseRounded=12 -> 8<12, no nudge -> 8.0
+        // Pick: 5kg HARD stale -> 0.90 -> 4.5 rounds to 4 step=2; baseRounded=4 step=2 (5/2=2.5->3*2=6? actually round-half-even of 2.5 in Kotlin's roundToLong = 3 -> 6). Skip; use direct nudge case.
+        // 10kg failed recent -> 0.95 -> 9.5 rounds to 10 step=2; baseRounded=10 -> 10>=10 -> nudge to 8.0
+        val sets = listOf(makeSet(weightKg = 10.0, status = SetStatus.FAILED))
+        val recent = LocalDate.of(2026, 2, 20)
+        assertEquals(8.0, suggestWeight(sets, recent, today, incrementKg = 2.0)!!, 0.001)
+    }
+
+    @Test
+    fun `default increment matches 2_5 behavior`() {
+        val today = LocalDate.of(2026, 2, 25)
+        val recent = LocalDate.of(2026, 2, 20)
+        val sets = listOf(makeSet(weightKg = 100.0, status = SetStatus.EASY))
+        // Default 2.5: 100 * 1.05 = 105
+        assertEquals(105.0, suggestWeight(sets, recent, today)!!, 0.001)
+        assertEquals(105.0, suggestWeight(sets, recent, today, incrementKg = 2.5)!!, 0.001)
     }
 
     // -- pending sets are filtered out --
