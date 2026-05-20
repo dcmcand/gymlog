@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -59,6 +60,7 @@ fun ExerciseListScreen(onExerciseClick: (Long) -> Unit) {
     val scope = rememberCoroutineScope()
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingExercise by remember { mutableStateOf<Exercise?>(null) }
 
     Scaffold(
         topBar = {
@@ -100,6 +102,7 @@ fun ExerciseListScreen(onExerciseClick: (Long) -> Unit) {
                         ExerciseRow(
                             exercise = exercise,
                             onClick = { onExerciseClick(exercise.id) },
+                            onEdit = { editingExercise = exercise },
                             onDelete = { scope.launch { exerciseDao.delete(exercise) } }
                         )
                     }
@@ -117,6 +120,7 @@ fun ExerciseListScreen(onExerciseClick: (Long) -> Unit) {
                         ExerciseRow(
                             exercise = exercise,
                             onClick = { onExerciseClick(exercise.id) },
+                            onEdit = { editingExercise = exercise },
                             onDelete = { scope.launch { exerciseDao.delete(exercise) } }
                         )
                     }
@@ -125,47 +129,84 @@ fun ExerciseListScreen(onExerciseClick: (Long) -> Unit) {
         }
     }
 
-    if (showAddDialog) {
-        AddExerciseDialog(
-            onDismiss = { showAddDialog = false },
+    if (showAddDialog || editingExercise != null) {
+        ExerciseDialog(
+            existing = editingExercise,
+            onDismiss = {
+                showAddDialog = false
+                editingExercise = null
+            },
             onConfirm = { exercise ->
                 scope.launch {
-                    exerciseDao.insert(exercise)
+                    if (exercise.id != 0L) exerciseDao.update(exercise)
+                    else exerciseDao.insert(exercise)
                 }
                 showAddDialog = false
+                editingExercise = null
             }
         )
     }
 }
 
 @Composable
-private fun ExerciseRow(exercise: Exercise, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun ExerciseRow(
+    exercise: Exercise,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     ListItem(
         headlineContent = { Text(exercise.displayName()) },
         modifier = Modifier.clickable(onClick = onClick),
         trailingContent = {
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete")
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                }
             }
         }
     )
 }
 
 @Composable
-private fun AddExerciseDialog(onDismiss: () -> Unit, onConfirm: (Exercise) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf(ExerciseType.WEIGHT) }
-    var fixedDimension by remember { mutableStateOf(CardioFixedDimension.DISTANCE) }
-    var fixedValueText by remember { mutableStateOf("") }
-    var distanceDisplayKm by remember { mutableStateOf(true) }
-    var levelText by remember { mutableStateOf("") }
-    var incrementText by remember { mutableStateOf("2.5") }
+private fun ExerciseDialog(
+    existing: Exercise? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (Exercise) -> Unit
+) {
+    val isEdit = existing != null
+
+    // Pre-fill the cardio fixed-value text in its display units (km vs m, min vs s).
+    val initialFixedValueText = remember(existing) {
+        val ex = existing ?: return@remember ""
+        val v = ex.fixedValue ?: return@remember ""
+        when (ex.cardioFixedDimension) {
+            CardioFixedDimension.DISTANCE -> if (ex.distanceDisplayKm) (v / 1000).toString() else v.toString()
+            CardioFixedDimension.TIME -> (v / 60).toString()
+            null -> ""
+        }
+    }
+
+    var name by remember { mutableStateOf(existing?.name ?: "") }
+    var selectedType by remember { mutableStateOf(existing?.type ?: ExerciseType.WEIGHT) }
+    var fixedDimension by remember {
+        mutableStateOf(existing?.cardioFixedDimension ?: CardioFixedDimension.DISTANCE)
+    }
+    var fixedValueText by remember { mutableStateOf(initialFixedValueText) }
+    var distanceDisplayKm by remember { mutableStateOf(existing?.distanceDisplayKm ?: true) }
+    var levelText by remember { mutableStateOf(existing?.level?.toString() ?: "") }
+    var incrementText by remember { mutableStateOf(existing?.weightIncrementKg?.toString() ?: "2.5") }
 
     fun parsedIncrement(): Double? = incrementText.toDoubleOrNull()?.takeIf { it > 0 }
 
     fun buildExercise(): Exercise {
+        val id = existing?.id ?: 0L
         if (selectedType == ExerciseType.WEIGHT) {
             return Exercise(
+                id = id,
                 name = name.trim(),
                 type = ExerciseType.WEIGHT,
                 weightIncrementKg = parsedIncrement() ?: 2.5
@@ -179,6 +220,7 @@ private fun AddExerciseDialog(onDismiss: () -> Unit, onConfirm: (Exercise) -> Un
             else -> rawValue
         }
         return Exercise(
+            id = id,
             name = name.trim(),
             type = ExerciseType.CARDIO,
             cardioFixedDimension = fixedDimension,
@@ -192,7 +234,7 @@ private fun AddExerciseDialog(onDismiss: () -> Unit, onConfirm: (Exercise) -> Un
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Exercise") },
+        title = { Text(if (isEdit) "Edit Exercise" else "Add Exercise") },
         text = {
             Column {
                 OutlinedTextField(
@@ -207,12 +249,14 @@ private fun AddExerciseDialog(onDismiss: () -> Unit, onConfirm: (Exercise) -> Un
                     FilterChip(
                         selected = selectedType == ExerciseType.WEIGHT,
                         onClick = { selectedType = ExerciseType.WEIGHT },
-                        label = { Text("Weight") }
+                        label = { Text("Weight") },
+                        enabled = !isEdit
                     )
                     FilterChip(
                         selected = selectedType == ExerciseType.CARDIO,
                         onClick = { selectedType = ExerciseType.CARDIO },
-                        label = { Text("Cardio") }
+                        label = { Text("Cardio") },
+                        enabled = !isEdit
                     )
                 }
 
@@ -315,7 +359,7 @@ private fun AddExerciseDialog(onDismiss: () -> Unit, onConfirm: (Exercise) -> Un
             TextButton(
                 onClick = { onConfirm(buildExercise()) },
                 enabled = isValid
-            ) { Text("Add") }
+            ) { Text(if (isEdit) "Save" else "Add") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
