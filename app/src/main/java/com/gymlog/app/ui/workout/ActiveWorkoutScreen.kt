@@ -71,6 +71,7 @@ fun ActiveWorkoutScreen(
     val workoutState = remember { ActiveWorkoutState() }
     var isLoading by remember { mutableStateOf(true) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showFinishDialog by remember { mutableStateOf(false) }
 
     // Rest timer state from service
     val timerState by RestTimerService.timerState.collectAsState()
@@ -197,6 +198,37 @@ fun ActiveWorkoutScreen(
         }
     }
 
+    if (showFinishDialog) {
+        AlertDialog(
+            onDismissRequest = { showFinishDialog = false },
+            title = { Text("Finish workout?") },
+            text = { Text("Mark this workout as complete.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showFinishDialog = false
+                    RestTimerService.stop(context)
+                    scope.launch {
+                        sessionId?.let { sid ->
+                            val session = sessionDao.getById(sid)
+                            if (session != null) {
+                                sessionDao.update(
+                                    session.copy(
+                                        status = SessionStatus.COMPLETED,
+                                        completedAt = Instant.now()
+                                    )
+                                )
+                            }
+                        }
+                        onFinish()
+                    }
+                }) { Text("Finish") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFinishDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -247,23 +279,7 @@ fun ActiveWorkoutScreen(
                     }
                     Surface(tonalElevation = 3.dp) {
                         Button(
-                            onClick = {
-                                RestTimerService.stop(context)
-                                scope.launch {
-                                    sessionId?.let { sid ->
-                                        val session = sessionDao.getById(sid)
-                                        if (session != null) {
-                                            sessionDao.update(
-                                                session.copy(
-                                                    status = SessionStatus.COMPLETED,
-                                                    completedAt = Instant.now()
-                                                )
-                                            )
-                                        }
-                                    }
-                                    onFinish()
-                                }
-                            },
+                            onClick = { showFinishDialog = true },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
