@@ -168,7 +168,12 @@ fun GymLogNavigation(
                     ?: return@composable
                 WorkoutDetailScreen(
                     sessionId = sessionId,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onReopen = { sid ->
+                        navController.navigate(Screen.ResumeWorkout.createRoute(sid)) {
+                            popUpTo(Screen.Calendar.route)
+                        }
+                    }
                 )
             }
             composable(Screen.Exercises.route) {
