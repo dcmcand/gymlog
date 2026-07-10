@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Whatshot
@@ -47,6 +48,7 @@ import com.gymlog.app.data.Exercise
 import com.gymlog.app.data.ExerciseSet
 import com.gymlog.app.data.ExerciseType
 import com.gymlog.app.data.GymLogDatabase
+import com.gymlog.app.data.SessionStatus
 import com.gymlog.app.data.SetStatus
 import com.gymlog.app.data.WorkoutSession
 import com.gymlog.app.data.displayName
@@ -58,7 +60,8 @@ import kotlinx.coroutines.launch
 fun WorkoutDetailScreen(
     sessionId: Long,
     onNavigateBack: () -> Unit,
-    onDelete: () -> Unit = onNavigateBack
+    onDelete: () -> Unit = onNavigateBack,
+    onReopen: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val db = remember { GymLogDatabase.getDatabase(context) }
@@ -73,6 +76,7 @@ fun WorkoutDetailScreen(
         mutableStateOf<List<Pair<Exercise, List<ExerciseSet>>>>(emptyList())
     }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showReopenBlockedDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(sessionId) {
         val s = sessionDao.getById(sessionId) ?: return@LaunchedEffect
@@ -85,6 +89,17 @@ fun WorkoutDetailScreen(
             val exercise = exerciseDao.getById(exerciseId)
             exercise?.let { it to exerciseSets }
         }
+    }
+
+    if (showReopenBlockedDialog) {
+        AlertDialog(
+            onDismissRequest = { showReopenBlockedDialog = false },
+            title = { Text("Another workout is in progress") },
+            text = { Text("Finish or delete the active workout before reopening this one.") },
+            confirmButton = {
+                TextButton(onClick = { showReopenBlockedDialog = false }) { Text("OK") }
+            }
+        )
     }
 
     if (showDeleteDialog) {
@@ -120,6 +135,24 @@ fun WorkoutDetailScreen(
                     }
                 },
                 actions = {
+                    if (session?.status == SessionStatus.COMPLETED) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                val inProgress = sessionDao.getInProgressSession()
+                                if (inProgress != null && inProgress.id != sessionId) {
+                                    showReopenBlockedDialog = true
+                                    return@launch
+                                }
+                                val s = sessionDao.getById(sessionId) ?: return@launch
+                                sessionDao.update(
+                                    s.copy(status = SessionStatus.IN_PROGRESS, completedAt = null)
+                                )
+                                onReopen(sessionId)
+                            }
+                        }) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Reopen workout")
+                        }
+                    }
                     IconButton(onClick = { showDeleteDialog = true }) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete workout")
                     }

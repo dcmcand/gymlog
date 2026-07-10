@@ -18,8 +18,12 @@ object RestTimerNotification {
 
     fun createChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        // Delete old channel to pick up importance changes (Android caches channel settings)
-        manager.deleteNotificationChannel(CHANNEL_ID)
+        // Do NOT delete the channel here. deleteNotificationChannel throws
+        // SecurityException ("Not allowed to delete channel ... with a foreground
+        // service") whenever the rest-timer foreground service is using it, which
+        // crashed the app when finishing a set (or relaunching) mid-timer (#28).
+        // createNotificationChannel is a no-op when the channel already exists, so
+        // it is safe to call on every launch and every timer start.
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Rest Timer",
@@ -51,9 +55,11 @@ object RestTimerNotification {
             .setWhen(endTimeMs)
             .setUsesChronometer(true)
             .setChronometerCountDown(true)
+            .setShowWhen(true)
             .setOngoing(true)
-            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setRequestPromotedOngoing(true)
             .setContentIntent(pendingIntent)
             .build()
     }
@@ -76,6 +82,7 @@ object RestTimerNotification {
             .setContentText("Time to start your next set")
             .setOngoing(false)
             .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pendingIntent)
             .build()

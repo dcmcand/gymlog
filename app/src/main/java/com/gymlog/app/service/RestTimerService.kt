@@ -124,9 +124,8 @@ class RestTimerService : Service() {
 
         countDownTimer = object : CountDownTimer(durationSeconds * 1000L, 1000L) {
             override fun onTick(millisUntilFinished: Long) {
-                _timerState.value = _timerState.value.copy(
-                    remainingSeconds = ((millisUntilFinished + 500) / 1000).toInt()
-                )
+                val remaining = ((millisUntilFinished + 500) / 1000).toInt()
+                _timerState.value = _timerState.value.copy(remainingSeconds = remaining)
             }
 
             override fun onFinish() {
@@ -177,9 +176,8 @@ class RestTimerService : Service() {
 
         countDownTimer = object : CountDownTimer(newRemaining * 1000L, 1000L) {
             override fun onTick(millisUntilFinished: Long) {
-                _timerState.value = _timerState.value.copy(
-                    remainingSeconds = ((millisUntilFinished + 500) / 1000).toInt()
-                )
+                val remaining = ((millisUntilFinished + 500) / 1000).toInt()
+                _timerState.value = _timerState.value.copy(remainingSeconds = remaining)
             }
 
             override fun onFinish() {
