@@ -5,6 +5,15 @@
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Discover the Core app's PebbleKitAndroid2 sender (Bluetooth is brokered there; no
+         INTERNET or Bluetooth permission is needed in this app). -->
+    <queries>
+        <intent>
+            <action android:name="io.rebble.pebblekit2.SEND_DATA_TO_WATCH" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -25,5 +34,12 @@
             android:name=".service.RestTimerService"
             android:foregroundServiceType="specialUse"
             android:exported="false" />
+        <service
+            android:name=".watch.GymLogPebbleListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="io.rebble.pebblekit2.RECEIVE_DATA_FROM_WATCH" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
