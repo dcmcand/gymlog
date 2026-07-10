@@ -1,0 +1,38 @@
+{
+  "name": "gymlog-watch",
+  "author": "GymLog",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "GymLog",
+    "uuid": "59e50327-68d4-4e6e-8a32-7331cb13194e",
+    "projectType": "moddable",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": ["emery"],
+    "watchapp": {
+      "watchface": false
+    },
+    "messageKeys": {
+      "EXERCISE": 0,
+      "TARGET": 1,
+      "SETLABEL": 2,
+      "DURATION": 3,
+      "RUNNING": 4,
+      "CMD": 10
+    },
+    "companionApp": {
+      "android": {
+        "url": "https://github.com/dcmcand/gymlog",
+        "apps": [
+          { "package": "com.gymlog.app" }
+        ]
+      }
+    },
+    "resources": {
+      "media": []
+    }
+  }
+}
