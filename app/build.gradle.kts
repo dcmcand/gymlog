@@ -63,5 +63,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.vico.compose.m3)
+    implementation(libs.pebblekit2.client)
     testImplementation(libs.junit)
 }
