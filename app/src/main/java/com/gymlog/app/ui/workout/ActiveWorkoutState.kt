@@ -37,6 +37,18 @@ class ActiveWorkoutState {
         }
     }
 
+    /** Reconcile in-place with an externally-updated set list (e.g. a completion made from the watch). */
+    fun syncFrom(orderedSets: List<ExerciseSet>) {
+        for (updated in orderedSets) {
+            val sets = setsByExercise[updated.exerciseId] ?: continue
+            val idx = sets.indexOfFirst { it.id == updated.id }
+            if (idx >= 0 && sets[idx] != updated) {
+                sets[idx] = updated
+                version++
+            }
+        }
+    }
+
     fun addSet(exerciseId: Long, set: ExerciseSet) {
         setsByExercise[exerciseId]?.let { sets ->
             sets.add(set)

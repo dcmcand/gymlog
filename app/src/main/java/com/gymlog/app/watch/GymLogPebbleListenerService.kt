@@ -23,7 +23,13 @@ class GymLogPebbleListenerService : BasePebbleListenerService() {
         if (watchappUUID != WatchProtocol.WATCHAPP_UUID) return ReceiveResult.Ack
         val status = parseCommand(data) ?: return ReceiveResult.Ack
 
-        val dao = GymLogDatabase.getDatabase(applicationContext).workoutSessionDao()
+        val db = GymLogDatabase.getDatabase(applicationContext)
+        val dao = db.workoutSessionDao()
+        // The store may be empty if the OS killed our process since the workout started;
+        // rebuild it from the in-progress session so a watch command still works (journey 5).
+        if (ActiveWorkoutStore.state.value == null) {
+            dao.getInProgressSession()?.let { ActiveWorkoutStore.load(dao, db.exerciseDao(), it.id) }
+        }
         val completed = ActiveWorkoutStore.completeCurrentSet(dao, status) ?: return ReceiveResult.Ack
 
         // Starting a foreground service from a background listener can be restricted on
