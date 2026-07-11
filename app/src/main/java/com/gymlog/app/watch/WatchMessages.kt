@@ -1,6 +1,5 @@
 package com.gymlog.app.watch
 
-import com.gymlog.app.data.SetStatus
 import io.rebble.pebblekit2.common.model.PebbleDictionaryItem
 
 /**
@@ -22,8 +21,11 @@ fun buildContextMessage(
     return m
 }
 
-/** Parses a watch -> phone command into a completion status, or null if not a known command. */
-fun parseCommand(data: Map<UInt, PebbleDictionaryItem>): SetStatus? {
+/** A command the watch can send to the phone. */
+enum class WatchCommand { EASY, HARD, EXTEND_REST }
+
+/** Parses a watch -> phone command, or null if not a known command. */
+fun parseWatchCommand(data: Map<UInt, PebbleDictionaryItem>): WatchCommand? {
     val value = when (val cmd = data[WatchProtocol.KEY_CMD]) {
         is PebbleDictionaryItem.Int32 -> cmd.value
         is PebbleDictionaryItem.Int16 -> cmd.value.toInt()
@@ -31,8 +33,9 @@ fun parseCommand(data: Map<UInt, PebbleDictionaryItem>): SetStatus? {
         else -> return null
     }
     return when (value) {
-        WatchProtocol.CMD_EASY -> SetStatus.EASY
-        WatchProtocol.CMD_HARD -> SetStatus.HARD
+        WatchProtocol.CMD_EASY -> WatchCommand.EASY
+        WatchProtocol.CMD_HARD -> WatchCommand.HARD
+        WatchProtocol.CMD_EXTEND -> WatchCommand.EXTEND_REST
         else -> null
     }
 }

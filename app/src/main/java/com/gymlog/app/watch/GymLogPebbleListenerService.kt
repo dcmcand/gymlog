@@ -1,6 +1,7 @@
 package com.gymlog.app.watch
 
 import com.gymlog.app.data.GymLogDatabase
+import com.gymlog.app.data.SetStatus
 import com.gymlog.app.service.RestTimerService
 import com.gymlog.app.ui.workout.ActiveWorkoutStore
 import io.rebble.pebblekit2.client.BasePebbleListenerService
@@ -21,7 +22,16 @@ class GymLogPebbleListenerService : BasePebbleListenerService() {
         watch: WatchIdentifier,
     ): ReceiveResult {
         if (watchappUUID != WatchProtocol.WATCHAPP_UUID) return ReceiveResult.Ack
-        val status = parseCommand(data) ?: return ReceiveResult.Ack
+        val command = parseWatchCommand(data) ?: return ReceiveResult.Ack
+
+        if (command == WatchCommand.EXTEND_REST) {
+            // Extend the running rest; RestTimerService.extend is a no-op if none is running.
+            try {
+                RestTimerService.extend(applicationContext, WatchProtocol.REST_SECONDS)
+            } catch (_: Exception) {
+            }
+            return ReceiveResult.Ack
+        }
 
         val db = GymLogDatabase.getDatabase(applicationContext)
         val dao = db.workoutSessionDao()
@@ -30,6 +40,7 @@ class GymLogPebbleListenerService : BasePebbleListenerService() {
         if (ActiveWorkoutStore.state.value == null) {
             dao.getInProgressSession()?.let { ActiveWorkoutStore.load(dao, db.exerciseDao(), it.id) }
         }
+        val status = if (command == WatchCommand.EASY) SetStatus.EASY else SetStatus.HARD
         val completed = ActiveWorkoutStore.completeCurrentSet(dao, status) ?: return ReceiveResult.Ack
 
         // Starting a foreground service from a background listener can be restricted on

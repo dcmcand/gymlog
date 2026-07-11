@@ -1,16 +1,19 @@
 import Poco from "commodetto/Poco";
 import Message from "pebble/message";
 import Button from "pebble/button";
+import Vibes from "pebble/vibes";
 
 const render = new Poco(screen);
 const black = render.makeColor(0, 0, 0);
 const white = render.makeColor(255, 255, 255);
 
 // Exact (family, size) pairs the Pebble Poco font table supports.
-const exFont = new render.Font("Gothic-Bold", 24);
-const smallFont = new render.Font("Gothic-Regular", 18);
-const bigFont = new render.Font("Bitham-Black", 30);
+const exFont = new render.Font("Gothic-Bold", 28);
+const smallFont = new render.Font("Gothic-Regular", 24);
+const bigFont = new render.Font("Bitham-Bold", 42);
 const hintFont = new render.Font("Gothic-Regular", 14);
+
+const EXTEND_SECONDS = 90;
 
 // Populated from the phone (keys pinned to the WatchProtocol integers).
 let exerciseName = "";
@@ -43,15 +46,15 @@ function draw() {
 		// No pending set: workout complete / idle.
 		drawCentered("All done", exFont, (render.height - exFont.height) / 2);
 	} else {
-		drawCentered(exerciseName, exFont, 8);
-		drawCentered(targetText, smallFont, 42);
-		drawCentered(setLabel, smallFont, 68);
+		drawCentered(exerciseName, exFont, 4);
+		drawCentered(targetText, smallFont, 44);
+		drawCentered(setLabel, smallFont, 76);
 		if (running) {
-			drawCentered(formatTime(remaining), bigFont, 108);
+			drawCentered(formatTime(remaining), bigFont, 112);
 		} else {
-			drawCentered("Ready", bigFont, 108);
+			drawCentered("Ready", bigFont, 112);
 		}
-		drawCentered("UP Easy    DN Hard", hintFont, render.height - 22);
+		drawCentered("Easy / +Time / Hard", hintFont, render.height - 22);
 	}
 
 	render.end();
@@ -65,6 +68,7 @@ watch.addEventListener("secondchange", function () {
 		if (remaining <= 0) {
 			remaining = 0;
 			running = false;
+			Vibes.doublePulse(); // buzz when the rest is over
 		}
 		draw();
 	}
@@ -90,7 +94,7 @@ const message = new Message({
 	},
 });
 
-// Send a completion command. Valid once the phone has sent at least one message (the
+// Send a command to the phone. Valid once the phone has sent at least one message (the
 // outbox becomes writable after the first inbound); GymLog always pushes context first.
 function send(cmd) {
 	try {
@@ -104,6 +108,18 @@ new Button({
 	types: ["up"],
 	onPush(down) {
 		if (down) send(1); // Easy
+	},
+});
+
+new Button({
+	types: ["select"],
+	onPush(down) {
+		if (!down) return;
+		if (!running) return; // only extend an active rest (matches the phone's no-op)
+		// Extend the rest: bump the local countdown immediately and tell the phone too.
+		remaining += EXTEND_SECONDS;
+		draw();
+		send(3); // extend rest
 	},
 });
 

@@ -1,6 +1,5 @@
 package com.gymlog.app.watch
 
-import com.gymlog.app.data.SetStatus
 import io.rebble.pebblekit2.common.model.PebbleDictionaryItem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -27,16 +26,20 @@ class WatchMessagesTest {
     }
 
     @Test
-    fun `parseCommand maps cmd ints to statuses`() {
+    fun `parseWatchCommand maps cmd ints to commands`() {
         assertEquals(
-            SetStatus.EASY,
-            parseCommand(mapOf(WatchProtocol.KEY_CMD to PebbleDictionaryItem.Int32(WatchProtocol.CMD_EASY))),
+            WatchCommand.EASY,
+            parseWatchCommand(mapOf(WatchProtocol.KEY_CMD to PebbleDictionaryItem.Int32(WatchProtocol.CMD_EASY))),
         )
         assertEquals(
-            SetStatus.HARD,
-            parseCommand(mapOf(WatchProtocol.KEY_CMD to PebbleDictionaryItem.Int32(WatchProtocol.CMD_HARD))),
+            WatchCommand.HARD,
+            parseWatchCommand(mapOf(WatchProtocol.KEY_CMD to PebbleDictionaryItem.Int32(WatchProtocol.CMD_HARD))),
         )
-        assertNull(parseCommand(mapOf(99u to PebbleDictionaryItem.Int32(1))))
-        assertNull(parseCommand(emptyMap()))
+        assertEquals(
+            WatchCommand.EXTEND_REST,
+            parseWatchCommand(mapOf(WatchProtocol.KEY_CMD to PebbleDictionaryItem.Int32(WatchProtocol.CMD_EXTEND))),
+        )
+        assertNull(parseWatchCommand(mapOf(99u to PebbleDictionaryItem.Int32(1))))
+        assertNull(parseWatchCommand(emptyMap()))
     }
 }
