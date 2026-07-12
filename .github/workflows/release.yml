@@ -56,6 +56,7 @@ jobs:
   # NOTE: bump pebble/package.json "version" each release (the appstore rejects a non-increasing
   # version). This job is validated on the first real release.
   publish-pebble:
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -77,6 +78,16 @@ jobs:
           uv tool install pebble-tool
           pebble sdk install latest
 
+      - name: Align watchapp version with the release tag
+        working-directory: pebble
+        run: |
+          RAW="${GITHUB_REF_NAME#v}"
+          IFS='.' read -r MA MI PA <<< "$RAW"
+          VERSION="${MA:-1}.${MI:-0}.${PA:-0}"
+          echo "PEBBLE_VERSION=$VERSION" >> "$GITHUB_ENV"
+          jq --arg v "$VERSION" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+          echo "watchapp version set to $VERSION"
+
       - name: Build watchapp
         working-directory: pebble
         run: pebble build
@@ -96,7 +107,7 @@ jobs:
           DESC="See your rest timer and current set on your wrist. Finish a set in the GymLog Android app and the watch shows the exercise, your target weight and reps, and which set you're on, with a live rest countdown. Log the set as Easy or Hard, extend the rest, or feel a buzz when the rest ends, all from the watch. It works offline over Bluetooth through the Pebble app, with no internet or account needed. Requires the GymLog Android app."
           pebble publish --non-interactive --is-published \
             --firebase-id-token "$ID_TOKEN" \
-            --name "GymLog" --category health \
+            --name "GymLog" --version "$PEBBLE_VERSION" --category health \
             --source "https://github.com/dcmcand/gymlog" \
             --description "$DESC" \
             --icon-large appstore/icon-large.png --icon-small appstore/icon-small.png \
