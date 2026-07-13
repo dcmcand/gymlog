@@ -12,7 +12,9 @@ android {
         applicationId = "com.gymlog.app"
         minSdk = 31
         targetSdk = 36
-        versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 2
+        // Source of truth for versionCode: a clean literal so F-Droid can parse it and
+        // auto-build each new git tag. Bump this on every release, then tag v<versionName>.
+        versionCode = 2
         versionName = System.getenv("VERSION_NAME") ?: "1.1"
     }
 
@@ -63,5 +65,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.vico.compose.m3)
+    implementation(libs.pebblekit2.client)
     testImplementation(libs.junit)
 }

@@ -10,6 +10,7 @@ room = "2.8.4"
 navigationCompose = "2.9.7"
 vico = "3.0.0"
 junit = "4.13.2"
+pebblekit2 = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -26,6 +27,7 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+pebblekit2-client = { group = "io.rebble.pebblekit2", name = "client", version.ref = "pebblekit2" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

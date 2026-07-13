@@ -48,6 +48,8 @@ import com.gymlog.app.data.WorkoutSession
 import com.gymlog.app.data.displayName
 import com.gymlog.app.data.suggestWeight
 import com.gymlog.app.service.RestTimerService
+import com.gymlog.app.watch.PebbleBridge
+import com.gymlog.app.watch.WatchProtocol
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -76,6 +78,10 @@ fun ActiveWorkoutScreen(
     // Rest timer state from service
     val timerState by RestTimerService.timerState.collectAsState()
     val showRestTimer = timerState.isRunning || (timerState.sessionId != null && timerState.remainingSeconds == 0)
+
+    // Shared source of truth for the watch; the Pebble listener service can update it while
+    // GymLog is backgrounded, so collecting it keeps the UI consistent on return.
+    val activeStore by ActiveWorkoutStore.state.collectAsState()
 
     // Modal state
     var selectedSetInfo by remember { mutableStateOf<SelectedSetInfo?>(null) }
@@ -198,6 +204,28 @@ fun ActiveWorkoutScreen(
         }
     }
 
+    // Load the shared store once the session's sets are in the DB (isLoading == false),
+    // keep the visible sets in sync with it (so a watch-made completion appears on return),
+    // and push context/timer to the watch on meaningful timer transitions - keyed on
+    // isRunning/endTimeMs, not per-tick, so the watch gets one message per rest.
+    LaunchedEffect(isLoading, sessionId) {
+        if (!isLoading) sessionId?.let {
+            ActiveWorkoutStore.load(sessionDao, exerciseDao, it)
+            val running = timerState.isRunning
+            val duration = if (running) timerState.remainingSeconds else 0
+            PebbleBridge.pushContext(context, ActiveWorkoutStore.state.value?.watchContext(), duration, running)
+        }
+    }
+    LaunchedEffect(activeStore) {
+        activeStore?.let { workoutState.syncFrom(it.orderedSets) }
+    }
+    LaunchedEffect(timerState.isRunning, timerState.endTimeMs) {
+        if (sessionId == null) return@LaunchedEffect
+        val ctx = ActiveWorkoutStore.state.value?.watchContext()
+        val duration = if (timerState.isRunning) timerState.remainingSeconds else 0
+        PebbleBridge.pushContext(context, ctx, duration, timerState.isRunning)
+    }
+
     if (showFinishDialog) {
         AlertDialog(
             onDismissRequest = { showFinishDialog = false },
@@ -207,6 +235,7 @@ fun ActiveWorkoutScreen(
                 TextButton(onClick = {
                     showFinishDialog = false
                     RestTimerService.stop(context)
+                    ActiveWorkoutStore.clear()
                     scope.launch {
                         sessionId?.let { sid ->
                             val session = sessionDao.getById(sid)
@@ -238,6 +267,7 @@ fun ActiveWorkoutScreen(
                 TextButton(onClick = {
                     showDeleteDialog = false
                     RestTimerService.stop(context)
+                    ActiveWorkoutStore.clear()
                     scope.launch {
                         sessionId?.let { sessionDao.deleteById(it) }
                         onDelete()
@@ -339,6 +369,7 @@ fun ActiveWorkoutScreen(
                         onSetUpdated = { setIndex, updatedSet ->
                             workoutState.updateSet(exercise.id, setIndex, updatedSet)
                             scope.launch { sessionDao.updateSet(updatedSet) }
+                            ActiveWorkoutStore.applyExternalSetUpdate(updatedSet)
                             if (updatedSet.status != SetStatus.PENDING) {
                                 sessionId?.let { RestTimerService.start(context, 90, it) }
                             }
@@ -380,6 +411,7 @@ fun ActiveWorkoutScreen(
                                 }
                                 val insertedId = sessionDao.insertSet(newSet)
                                 workoutState.addSet(exercise.id, newSet.copy(id = insertedId))
+                                sessionId?.let { ActiveWorkoutStore.load(sessionDao, exerciseDao, it) }
                             }
                         }
                     )
@@ -398,6 +430,7 @@ fun ActiveWorkoutScreen(
                     )
                     workoutState.updateSet(info.exerciseId, info.setIndex, updatedSet)
                     scope.launch { sessionDao.updateSet(updatedSet) }
+                    ActiveWorkoutStore.applyExternalSetUpdate(updatedSet)
 
                     // Auto-start rest timer
                     sessionId?.let { RestTimerService.start(context, 90, it) }

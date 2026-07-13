@@ -30,7 +30,6 @@ jobs:
         run: |
           TAG="${GITHUB_REF#refs/tags/v}"
           echo "VERSION_NAME=$TAG" >> "$GITHUB_OUTPUT"
-          echo "VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Decode keystore
         run: |
@@ -39,7 +38,6 @@ jobs:
       - name: Build release APK
         env:
           VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
-          VERSION_CODE: ${{ steps.version.outputs.VERSION_CODE }}
           KEYSTORE_FILE: /tmp/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -51,3 +49,68 @@ jobs:
         with:
           generate_release_notes: true
           files: app/build/outputs/apk/release/app-release.apk
+
+  # Publishes the Alloy watchapp to the Pebble appstore. Requires the PEBBLE_REFRESH_TOKEN
+  # secret (the refresh token from a local `pebble login`); the workflow mints a short-lived
+  # id token from it. The FIREBASE_API_KEY below is a public Firebase client key, not a secret.
+  # NOTE: bump pebble/package.json "version" each release (the appstore rejects a non-increasing
+  # version). This job is validated on the first real release.
+  publish-pebble:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install Pebble toolchain
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install pebble-tool and SDK
+        run: |
+          uv tool install pebble-tool
+          pebble sdk install latest
+
+      - name: Align watchapp version with the release tag
+        working-directory: pebble
+        run: |
+          RAW="${GITHUB_REF_NAME#v}"
+          IFS='.' read -r MA MI PA <<< "$RAW"
+          VERSION="${MA:-1}.${MI:-0}.${PA:-0}"
+          echo "PEBBLE_VERSION=$VERSION" >> "$GITHUB_ENV"
+          jq --arg v "$VERSION" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+          echo "watchapp version set to $VERSION"
+
+      - name: Build watchapp
+        working-directory: pebble
+        run: pebble build
+
+      - name: Publish to the Pebble appstore
+        working-directory: pebble
+        env:
+          PEBBLE_REFRESH_TOKEN: ${{ secrets.PEBBLE_REFRESH_TOKEN }}
+          FIREBASE_API_KEY: AIzaSyBZ9Cdvwwv9At2lPmc8TxyyEqSXGXejGvc
+        run: |
+          ID_TOKEN=$(curl -s "https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}" \
+            --data-urlencode "grant_type=refresh_token" \
+            --data-urlencode "refresh_token=${PEBBLE_REFRESH_TOKEN}" | jq -r .id_token)
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to mint a Pebble id token from the refresh token"; exit 1
+          fi
+          DESC="See your rest timer and current set on your wrist. Finish a set in the GymLog Android app and the watch shows the exercise, your target weight and reps, and which set you're on, with a live rest countdown. Log the set as Easy or Hard, extend the rest, or feel a buzz when the rest ends, all from the watch. It works offline over Bluetooth through the Pebble app, with no internet or account needed. Requires the GymLog Android app."
+          pebble publish --non-interactive --is-published \
+            --firebase-id-token "$ID_TOKEN" \
+            --name "GymLog" --version "$PEBBLE_VERSION" --category health \
+            --source "https://github.com/dcmcand/gymlog" \
+            --description "$DESC" \
+            --icon-large appstore/icon-large.png --icon-small appstore/icon-small.png \
+            --screenshots appstore/emery_rest.png appstore/emery_done.png \
+            --no-gif-all-platforms \
+            --release-notes "Release ${GITHUB_REF_NAME}"
