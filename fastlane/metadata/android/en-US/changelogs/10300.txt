@@ -1,0 +1,1 @@
+Pebble Time 2 support: see the rest timer and your current set on the watch, complete sets (Easy or Hard) and extend rests from your wrist, and get a buzz when the rest ends. Works offline over Bluetooth; no internet or account needed.
