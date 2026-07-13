@@ -52,7 +52,8 @@ jobs:
 
   # Publishes the Alloy watchapp to the Pebble appstore. Requires the PEBBLE_REFRESH_TOKEN
   # secret (the refresh token from a local `pebble login`); the workflow mints a short-lived
-  # id token from it. The FIREBASE_API_KEY below is a public Firebase client key, not a secret.
+  # id token from it, using the PEBBLE_FIREBASE_API_KEY secret (Pebble's public Firebase
+  # client key - kept as a secret to stay out of source and CI logs).
   # NOTE: bump pebble/package.json "version" each release (the appstore rejects a non-increasing
   # version). This job is validated on the first real release.
   publish-pebble:
@@ -96,7 +97,7 @@ jobs:
         working-directory: pebble
         env:
           PEBBLE_REFRESH_TOKEN: ${{ secrets.PEBBLE_REFRESH_TOKEN }}
-          FIREBASE_API_KEY: AIzaSyBZ9Cdvwwv9At2lPmc8TxyyEqSXGXejGvc
+          FIREBASE_API_KEY: ${{ secrets.PEBBLE_FIREBASE_API_KEY }}
         run: |
           ID_TOKEN=$(curl -s "https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}" \
             --data-urlencode "grant_type=refresh_token" \
