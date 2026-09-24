@@ -39,6 +39,10 @@ class WatchMessagesTest {
             WatchCommand.EXTEND_REST,
             parseWatchCommand(mapOf(WatchProtocol.KEY_CMD to PebbleDictionaryItem.Int32(WatchProtocol.CMD_EXTEND))),
         )
+        assertEquals(
+            WatchCommand.NEXT_EXERCISE,
+            parseWatchCommand(mapOf(WatchProtocol.KEY_CMD to PebbleDictionaryItem.Int32(WatchProtocol.CMD_NEXT))),
+        )
         assertNull(parseWatchCommand(mapOf(99u to PebbleDictionaryItem.Int32(1))))
         assertNull(parseWatchCommand(emptyMap()))
     }

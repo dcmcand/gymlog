@@ -23,6 +23,7 @@ object WatchProtocol {
     const val CMD_EASY = 1
     const val CMD_HARD = 2
     const val CMD_EXTEND = 3
+    const val CMD_NEXT = 4
 
     const val REST_SECONDS = 90
 }

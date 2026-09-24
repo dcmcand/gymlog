@@ -30,7 +30,16 @@ interface WorkoutSessionDao {
     @Query("DELETE FROM workout_sessions WHERE id = :id")
     suspend fun deleteById(id: Long)
 
-    @Query("SELECT * FROM exercise_sets WHERE sessionId = :sessionId ORDER BY exerciseId, setNumber")
+    // Exercises in the order the session was created with (sets are inserted in workout order,
+    // so each exercise's lowest set id is its position), then by set number within each.
+    @Query("""
+        SELECT es.* FROM exercise_sets es
+        WHERE es.sessionId = :sessionId
+        ORDER BY (
+            SELECT MIN(f.id) FROM exercise_sets f
+            WHERE f.sessionId = es.sessionId AND f.exerciseId = es.exerciseId
+        ), es.setNumber
+    """)
     suspend fun getSetsForSession(sessionId: Long): List<ExerciseSet>
 
     @Query("SELECT * FROM exercise_sets WHERE sessionId = :sessionId AND exerciseId = :exerciseId ORDER BY setNumber")
