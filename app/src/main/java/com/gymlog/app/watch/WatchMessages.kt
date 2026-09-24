@@ -22,7 +22,7 @@ fun buildContextMessage(
 }
 
 /** A command the watch can send to the phone. */
-enum class WatchCommand { EASY, HARD, EXTEND_REST }
+enum class WatchCommand { EASY, HARD, EXTEND_REST, NEXT_EXERCISE }
 
 /** Parses a watch -> phone command, or null if not a known command. */
 fun parseWatchCommand(data: Map<UInt, PebbleDictionaryItem>): WatchCommand? {
@@ -36,6 +36,7 @@ fun parseWatchCommand(data: Map<UInt, PebbleDictionaryItem>): WatchCommand? {
         WatchProtocol.CMD_EASY -> WatchCommand.EASY
         WatchProtocol.CMD_HARD -> WatchCommand.HARD
         WatchProtocol.CMD_EXTEND -> WatchCommand.EXTEND_REST
+        WatchProtocol.CMD_NEXT -> WatchCommand.NEXT_EXERCISE
         else -> null
     }
 }

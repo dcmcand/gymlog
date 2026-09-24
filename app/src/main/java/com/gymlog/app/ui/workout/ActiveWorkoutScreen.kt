@@ -83,6 +83,14 @@ fun ActiveWorkoutScreen(
     // GymLog is backgrounded, so collecting it keeps the UI consistent on return.
     val activeStore by ActiveWorkoutStore.state.collectAsState()
 
+    // Send the current set + rest timer to the watch. Reads the live timer (not the composed
+    // snapshot) since this also runs from coroutines after a set edit.
+    fun pushWatchContext() {
+        val timer = RestTimerService.timerState.value
+        val duration = if (timer.isRunning) timer.remainingSeconds else 0
+        PebbleBridge.pushContext(context, ActiveWorkoutStore.state.value?.watchContext(), duration, timer.isRunning)
+    }
+
     // Modal state
     var selectedSetInfo by remember { mutableStateOf<SelectedSetInfo?>(null) }
 
@@ -221,9 +229,7 @@ fun ActiveWorkoutScreen(
     }
     LaunchedEffect(timerState.isRunning, timerState.endTimeMs) {
         if (sessionId == null) return@LaunchedEffect
-        val ctx = ActiveWorkoutStore.state.value?.watchContext()
-        val duration = if (timerState.isRunning) timerState.remainingSeconds else 0
-        PebbleBridge.pushContext(context, ctx, duration, timerState.isRunning)
+        pushWatchContext()
     }
 
     if (showFinishDialog) {
@@ -359,11 +365,9 @@ fun ActiveWorkoutScreen(
                         onWeightChangedForAll = { newWeight ->
                             val currentSets = workoutState.getExerciseSets(exercise.id) ?: return@CompactExerciseCard
                             scope.launch {
-                                currentSets.forEachIndexed { index, s ->
-                                    val updated = s.copy(weightKg = newWeight)
-                                    workoutState.updateSet(exercise.id, index, updated)
-                                    sessionDao.updateSet(updated)
-                                }
+                                ActiveWorkoutStore.applyWeightToSets(sessionDao, currentSets, newWeight)
+                                    .forEachIndexed { index, updated -> workoutState.updateSet(exercise.id, index, updated) }
+                                pushWatchContext()
                             }
                         },
                         onSetUpdated = { setIndex, updatedSet ->
@@ -372,6 +376,9 @@ fun ActiveWorkoutScreen(
                             ActiveWorkoutStore.applyExternalSetUpdate(updatedSet)
                             if (updatedSet.status != SetStatus.PENDING) {
                                 sessionId?.let { RestTimerService.start(context, 90, it) }
+                            } else {
+                                // Timer transitions push on their own; plain edits (reps/weight) don't.
+                                pushWatchContext()
                             }
                         },
                         onAddSet = {

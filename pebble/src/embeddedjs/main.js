@@ -2,6 +2,7 @@ import Poco from "commodetto/Poco";
 import Message from "pebble/message";
 import Button from "pebble/button";
 import Vibes from "pebble/vibes";
+import Timer from "timer";
 
 const render = new Poco(screen);
 const black = render.makeColor(0, 0, 0);
@@ -14,6 +15,7 @@ const bigFont = new render.Font("Bitham-Bold", 42);
 const hintFont = new render.Font("Gothic-Regular", 14);
 
 const EXTEND_SECONDS = 90;
+const HOLD_MS = 500; // center held this long = extend rest; shorter = next exercise
 
 // Populated from the phone (keys pinned to the WatchProtocol integers).
 let exerciseName = "";
@@ -54,7 +56,7 @@ function draw() {
 		} else {
 			drawCentered("Ready", bigFont, 112);
 		}
-		drawCentered("Easy / +Time / Hard", hintFont, render.height - 22);
+		drawCentered("Easy / Next (hold +Time) / Hard", hintFont, render.height - 22);
 	}
 
 	render.end();
@@ -111,15 +113,32 @@ new Button({
 	},
 });
 
+// Alloy's Button only reports press/release, so time the hold ourselves: if the hold timer
+// fires first it's an extend, otherwise the release is a tap that cycles exercises.
+let holdTimer = null;
+
+function extendRest() {
+	if (!running) return; // only extend an active rest (matches the phone's no-op)
+	// Bump the local countdown immediately and tell the phone too.
+	remaining += EXTEND_SECONDS;
+	draw();
+	send(3); // extend rest
+}
+
 new Button({
 	types: ["select"],
 	onPush(down) {
-		if (!down) return;
-		if (!running) return; // only extend an active rest (matches the phone's no-op)
-		// Extend the rest: bump the local countdown immediately and tell the phone too.
-		remaining += EXTEND_SECONDS;
-		draw();
-		send(3); // extend rest
+		if (down) {
+			Timer.clear(holdTimer); // never leave an orphan that would extend later
+			holdTimer = Timer.set(function () {
+				holdTimer = null;
+				extendRest();
+			}, HOLD_MS);
+		} else if (holdTimer !== null) {
+			Timer.clear(holdTimer);
+			holdTimer = null;
+			send(4); // next unfinished exercise; the phone pushes the new context back
+		}
 	},
 });
 
