@@ -105,7 +105,7 @@ jobs:
           if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
             echo "Failed to mint a Pebble id token from the refresh token"; exit 1
           fi
-          DESC="See your rest timer and current set on your wrist. Finish a set in the GymLog Android app and the watch shows the exercise, your target weight and reps, and which set you're on, with a live rest countdown. Log the set as Easy or Hard, extend the rest, or feel a buzz when the rest ends, all from the watch. It works offline over Bluetooth through the Pebble app, with no internet or account needed. Requires the GymLog Android app."
+          DESC="See your rest timer and current set on your wrist. Finish a set in the GymLog Android app and the watch shows the exercise, your target weight and reps, and which set you're on, with a live rest countdown. Log the set as Easy or Hard, skip to another exercise if a machine is taken, extend the rest, or feel a buzz when the rest ends, all from the watch. It works offline over Bluetooth through the Pebble app, with no internet or account needed. Requires the GymLog Android app."
           pebble publish --non-interactive --is-published \
             --firebase-id-token "$ID_TOKEN" \
             --name "GymLog" --version "$PEBBLE_VERSION" --category health \
