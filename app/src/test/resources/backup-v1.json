@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "exportedAt": "2026-09-25T10:00:00Z",
+  "appVersion": "1.5",
+  "exercises": [
+    { "id": 1, "name": "bench press", "type": "WEIGHT", "cardioFixedDimension": null, "fixedValue": null,
+      "level": null, "distanceDisplayKm": false, "weightIncrementKg": 2.5 }
+  ],
+  "workouts": [ { "id": 1, "name": "Push" } ],
+  "workoutExercises": [
+    { "id": 1, "workoutId": 1, "exerciseId": 1, "targetSets": 5, "targetReps": 8, "targetWeightKg": 40.0,
+      "targetDistanceM": null, "targetDurationSec": null, "sortOrder": 0 }
+  ],
+  "sessions": [
+    { "id": 1, "workoutId": 1, "date": "2026-09-24", "status": "IN_PROGRESS",
+      "startedAt": "2026-09-24T17:00:00Z", "completedAt": null }
+  ],
+  "sets": [
+    { "id": 1, "sessionId": 1, "exerciseId": 1, "setNumber": 1, "weightKg": 42.5, "repsCompleted": 8,
+      "distanceM": null, "durationSec": null, "status": "EASY" },
+    { "id": 2, "sessionId": 1, "exerciseId": 1, "setNumber": 2, "weightKg": 42.5, "repsCompleted": 8,
+      "distanceM": null, "durationSec": null, "status": "PENDING" }
+  ]
+}
