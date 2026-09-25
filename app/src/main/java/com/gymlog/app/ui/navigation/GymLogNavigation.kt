@@ -29,6 +29,7 @@ import com.gymlog.app.ui.exercises.ExerciseListScreen
 import com.gymlog.app.ui.workouts.EditWorkoutScreen
 import com.gymlog.app.ui.workouts.WorkoutListScreen
 import com.gymlog.app.ui.progress.ExerciseProgressScreen
+import com.gymlog.app.ui.settings.SettingsScreen
 import com.gymlog.app.ui.workout.ActiveWorkoutScreen
 import com.gymlog.app.ui.workout.WorkoutPickerScreen
 
@@ -100,8 +101,14 @@ fun GymLogNavigation(
                     },
                     onWorkoutClick = { sessionId ->
                         navController.navigate(Screen.WorkoutDetail.createRoute(sessionId))
+                    },
+                    onSettingsClick = {
+                        navController.navigate(Screen.Settings.route)
                     }
                 )
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(Screen.Workouts.route) {
                 WorkoutListScreen(

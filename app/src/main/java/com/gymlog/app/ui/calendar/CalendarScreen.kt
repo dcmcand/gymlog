@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -67,7 +68,8 @@ data class SessionSummary(
 fun CalendarScreen(
     onNewWorkoutClick: () -> Unit,
     onResumeWorkout: (Long) -> Unit,
-    onWorkoutClick: (Long) -> Unit = {}
+    onWorkoutClick: (Long) -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val db = remember { GymLogDatabase.getDatabase(context) }
@@ -92,7 +94,16 @@ fun CalendarScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("GymLog") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("GymLog") },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                },
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onNewWorkoutClick) {
                 Icon(Icons.Default.Add, contentDescription = "New workout")
