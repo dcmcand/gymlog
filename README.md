@@ -99,6 +99,16 @@ Your data stays on your device, period.
 3. Open the downloaded APK and tap **Install**
 4. Once installed, you can revoke the "Install unknown apps" permission if you prefer
 
+### Upgrading from 1.x
+
+GymLog 2.0 has a new app ID (`io.github.dcmcand.gymlog`, needed for F-Droid and Google Play), so it installs as a **separate app** next to your old one instead of updating it. To move your history:
+
+1. In your old GymLog (update it to 1.5 first if needed), open **Settings** (gear on the Calendar tab) and tap **Export data**
+2. Install 2.0, open **Settings** and tap **Import data**, then pick the file you exported
+3. Check your history in the new app (its Settings shows "GymLog 2.0"), then uninstall the old one
+
+Do this before your next workout: once 2.0 is installed, the Pebble watch app talks only to the new app. If you track releases with an updater app, add GymLog again under the new ID.
+
 ### F-Droid
 _Coming soon_
 

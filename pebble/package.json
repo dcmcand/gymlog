@@ -1,7 +1,7 @@
 {
   "name": "gymlog-watch",
   "author": "GymLog",
-  "version": "1.4.0",
+  "version": "2.0.0",
   "keywords": ["pebble-app"],
   "private": true,
   "dependencies": {},
@@ -27,6 +27,7 @@
       "android": {
         "url": "https://github.com/dcmcand/gymlog",
         "apps": [
+          { "package": "io.github.dcmcand.gymlog" },
           { "package": "com.gymlog.app" }
         ]
       }
