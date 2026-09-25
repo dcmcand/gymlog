@@ -1,0 +1,1 @@
+New Settings screen (gear icon on the Calendar tab) with data export and import. Export saves all your exercises, workouts and history to a readable JSON file you choose; import restores it, replacing what's on the device. Use it for backups or to move to a new phone. No new permissions.

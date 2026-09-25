@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -15,8 +16,8 @@ android {
         // Source of truth for versionCode: a clean literal so F-Droid can parse it and
         // auto-build each new git tag. Bump on every release (scheme: major*10000 +
         // minor*100 + patch), then tag v<versionName>.
-        versionCode = 10400
-        versionName = System.getenv("VERSION_NAME") ?: "1.4"
+        versionCode = 10500
+        versionName = System.getenv("VERSION_NAME") ?: "1.5"
     }
 
     val keystoreFile = System.getenv("KEYSTORE_FILE")
@@ -67,5 +68,6 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.vico.compose.m3)
     implementation(libs.pebblekit2.client)
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
 }

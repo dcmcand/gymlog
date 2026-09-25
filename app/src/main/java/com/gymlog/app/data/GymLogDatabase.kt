@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.gymlog.app.data.backup.BackupDao
 
 @Database(
     entities = [
@@ -24,6 +25,7 @@ abstract class GymLogDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun workoutDao(): WorkoutDao
     abstract fun workoutSessionDao(): WorkoutSessionDao
+    abstract fun backupDao(): BackupDao
 
     companion object {
         @Volatile
