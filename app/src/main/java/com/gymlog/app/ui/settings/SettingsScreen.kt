@@ -1,5 +1,6 @@
 package com.gymlog.app.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -63,7 +64,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         busy = true
         scope.launch {
             val message = try {
-                withContext(Dispatchers.IO) { work() }
+                runToCompletion { work() }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -90,7 +91,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult // picker cancelled
         runBackupTask {
-            val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
+            val text = context.contentResolver.openInputStream(uri)?.use { readBackupText(it) }
                 ?: throw IOException("could not open $uri")
             val preview = service.preview(text)
             withContext(Dispatchers.Main) { pendingImport = preview }
@@ -98,12 +99,15 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         }
     }
 
+    // Stay put while an export or import runs, so the user sees how it ended.
+    BackHandler(enabled = busy) {}
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = onNavigateBack, enabled = !busy) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
