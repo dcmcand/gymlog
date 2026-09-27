@@ -15,7 +15,7 @@ Binaries: https://github.com/dcmcand/gymlog/releases/download/v%v/app-release.ap
 Builds:
   - versionName: 2.0.1
     versionCode: 20001
-    commit: v2.0.1
+    commit: c1c2cd3378e8eebe2e4cd4fb8453459410ebc904
     subdir: app
     gradle:
       - yes
@@ -23,6 +23,11 @@ Builds:
       - pebble
 
 AllowedAPKSigningKeys: 6574c5fd7658265792b342c53246205f743fdcbfa35ddf0255e0885e30b9e4b7
+
+MaintainerNotes: |-
+  Reproducible build: F-Droid publishes the upstream-signed APK from GitHub releases.
+  pebble/ holds the Pebble watchapp (built separately with the Pebble SDK); it is not part of
+  the Android build, and its package.json has no lock file, so it is removed with scandelete.
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags

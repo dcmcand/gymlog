@@ -9,9 +9,12 @@ update each other.
 
 1. Fork https://gitlab.com/fdroid/fdroiddata and create a branch `io.github.dcmcand.gymlog`.
 2. Copy `io.github.dcmcand.gymlog.yml` from this folder to `metadata/io.github.dcmcand.gymlog.yml`.
-3. Commit with the message `New App: io.github.dcmcand.gymlog`, push, and open a merge request
-   against fdroiddata `master`.
-4. After merge, new versions are picked up automatically from `vX.Y[.Z]` tags
+3. Commit with the message `New app: GymLog`, push, and open a merge request against
+   fdroiddata `master` titled `New app: GymLog`, using the "App inclusion" template. The fork
+   must be public and the branch unprotected.
+4. For each new release, `commit` must be the full commit hash (not the tag). After inclusion,
+   F-Droid's auto-update fills this in from new tags.
+5. After merge, new versions are picked up automatically from `vX.Y[.Z]` tags
    (`UpdateCheckMode: Tags`, `AutoUpdateMode: Version`).
 
 ## IzzyOnDroid (Codeberg)
