@@ -1,32 +1,32 @@
 # F-Droid submission
 
-GymLog qualifies for [F-Droid](https://f-droid.org): MIT-licensed, fully offline (no
-`INTERNET` permission), no Google Play Services. F-Droid builds from source and, once
-included, **auto-builds every new `v*` git tag** (pull-based - nothing is pushed to it).
+GymLog is set up for F-Droid **reproducible builds**: F-Droid builds each tagged release from
+source, checks the result matches the APK attached to the GitHub release, and then publishes
+our signed APK. GitHub, F-Droid and IzzyOnDroid installs therefore share one signature and can
+update each other.
 
-`com.gymlog.app.yml` here is the metadata to submit. It is **not** used by this repo; copy
-it into the F-Droid data repo via a merge request.
+## Official F-Droid (GitLab)
 
-## One-time inclusion
+1. Fork https://gitlab.com/fdroid/fdroiddata and create a branch `io.github.dcmcand.gymlog`.
+2. Copy `io.github.dcmcand.gymlog.yml` from this folder to `metadata/io.github.dcmcand.gymlog.yml`.
+3. Commit with the message `New App: io.github.dcmcand.gymlog`, push, and open a merge request
+   against fdroiddata `master`.
+4. After merge, new versions are picked up automatically from `vX.Y[.Z]` tags
+   (`UpdateCheckMode: Tags`, `AutoUpdateMode: Version`).
 
-1. Cut a release first so the referenced tag exists: bump `versionCode` in
-   `app/build.gradle.kts`, commit, then `git tag v1.1 && git push --tags`.
-2. Fork `https://gitlab.com/fdroid/fdroiddata` and create a branch.
-3. Copy `com.gymlog.app.yml` to `metadata/com.gymlog.app.yml` in your fork.
-4. Validate locally with `fdroidserver`:
-   ```
-   fdroid lint com.gymlog.app
-   fdroid build com.gymlog.app
-   ```
-5. Open a merge request against `fdroiddata`.
+## IzzyOnDroid (Codeberg)
 
-## Each subsequent release (fully automatic once included)
+Open an issue at https://codeberg.org/IzzyOnDroid/repodata asking for inclusion:
 
-Bump `versionCode` (and `versionName`) in `app/build.gradle.kts`, commit, and push a
-matching `v<versionName>` tag. `UpdateCheckMode: Tags` + `AutoUpdateMode: Version` make
-F-Droid detect the new tag, read the new `versionCode` literal, and build + publish it.
-No further merge requests needed.
+> Please add GymLog (io.github.dcmcand.gymlog), a privacy-focused offline workout tracker
+> (MIT, https://github.com/dcmcand/gymlog). Signed APKs are attached to every GitHub release
+> as `app-release.apk`; fastlane metadata is in the repo. No trackers or proprietary libraries,
+> and the APK carries no dependency-info block.
 
-Note: F-Droid signs the release with its own key (this repo's `signingConfig` is skipped
-when `KEYSTORE_FILE` is unset), so F-Droid builds are a distinct signature from the Play/
-GitHub-release APKs - expected and fine.
+## Keeping releases reproducible
+
+- Build releases with JDK 21 (CI uses Temurin 21).
+- Keep `dependenciesInfo { includeInApk = false }` in `app/build.gradle.kts`; the release
+  workflow fails if the signed APK's signing block contains anything but signatures.
+- `python3 scripts/apk_check.py compare <signed.apk> <unsigned.apk>` checks a local unsigned
+  build against a published APK.
