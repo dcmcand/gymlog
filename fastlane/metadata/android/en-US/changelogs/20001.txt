@@ -1,0 +1,1 @@
+Preparing GymLog for F-Droid: release builds no longer embed Google's encrypted dependency metadata, and the store listing has an icon. No changes to how the app works.

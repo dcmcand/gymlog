@@ -28,5 +28,7 @@ Open an issue at https://codeberg.org/IzzyOnDroid/repodata asking for inclusion:
 - Build releases with JDK 21 (CI uses Temurin 21).
 - Keep `dependenciesInfo { includeInApk = false }` in `app/build.gradle.kts`; the release
   workflow fails if the signed APK's signing block contains anything but signatures.
+- Keep `vcsInfo.include = false` on the release build type, so the APK doesn't depend on how
+  the source was checked out (AGP otherwise embeds the git revision).
 - `python3 scripts/apk_check.py compare <signed.apk> <unsigned.apk>` checks a local unsigned
   build against a published APK.

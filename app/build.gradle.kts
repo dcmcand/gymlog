@@ -16,8 +16,8 @@ android {
         // Source of truth for versionCode: a clean literal so F-Droid can parse it and
         // auto-build each new git tag. Bump on every release (scheme: major*10000 +
         // minor*100 + patch), then tag v<versionName>.
-        versionCode = 20000
-        versionName = System.getenv("VERSION_NAME") ?: "2.0"
+        versionCode = 20001
+        versionName = System.getenv("VERSION_NAME") ?: "2.0.1"
     }
 
     val keystoreFile = System.getenv("KEYSTORE_FILE")
