@@ -13,11 +13,12 @@ android {
         applicationId = "io.github.dcmcand.gymlog"
         minSdk = 31
         targetSdk = 36
-        // Source of truth for versionCode: a clean literal so F-Droid can parse it and
-        // auto-build each new git tag. Bump on every release (scheme: major*10000 +
-        // minor*100 + patch), then tag v<versionName>.
+        // Source of truth for the version: clean literals so F-Droid's update checker can parse
+        // them and rebuild each new git tag reproducibly. Bump both on every release (versionCode
+        // scheme: major*10000 + minor*100 + patch), then tag v<versionName>; the release
+        // workflow refuses a tag that doesn't match.
         versionCode = 20001
-        versionName = System.getenv("VERSION_NAME") ?: "2.0.1"
+        versionName = "2.0.1"
     }
 
     val keystoreFile = System.getenv("KEYSTORE_FILE")

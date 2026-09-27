@@ -491,6 +491,11 @@ If it is not 21, add to the build entry in both `$S/fdroiddata/metadata/...yml` 
 ```
 (adjust the package/suite to what the image's Debian release provides; `fdroid lint` must stay clean), and ledger the ruling.
 
+- [ ] **Step 2b: Check that F-Droid detects the release**
+
+Run: `$RUN checkupdates --allow-dirty io.github.dcmcand.gymlog -v`
+Expected: finds tag `v2.0.1` with versionName 2.0.1 / versionCode 20001 (no "Couldn't find any version information").
+
 - [ ] **Step 3: Build with fdroidserver**
 
 With the metadata in `$S/fdroiddata/metadata/` and `$RUN` from Task 3:

@@ -26,6 +26,20 @@ class StoreMetadataTest {
         assertTrue(Regex("""release\s*\{[^}]*vcsInfo\.include\s*=\s*false""").containsMatchIn(gradle))
     }
 
+    @Test
+    fun `version is a plain literal that F-Droid can read`() {
+        // fdroidserver's update checker reads versionCode/versionName from build.gradle.kts with
+        // regexes: an expression like getenv(...) ?: "x" makes it find no version at all.
+        val gradle = File("build.gradle.kts").readText()
+        data class Case(val name: String, val ok: Boolean)
+        val cases = listOf(
+            Case("versionName is a quoted literal", Regex("""(?m)^\s*versionName\s*=\s*"[0-9.]+"\s*$""").containsMatchIn(gradle)),
+            Case("versionCode is an integer literal", Regex("""(?m)^\s*versionCode\s*=\s*\d+\s*$""").containsMatchIn(gradle)),
+            Case("no VERSION_NAME override (CI and F-Droid must build the same version)", !gradle.contains("VERSION_NAME")),
+        )
+        for (c in cases) assertTrue(c.name, c.ok)
+    }
+
     private val listing = File("../fastlane/metadata/android/en-US")
 
     @Test

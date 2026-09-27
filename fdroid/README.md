@@ -26,6 +26,9 @@ Open an issue at https://codeberg.org/IzzyOnDroid/repodata asking for inclusion:
 ## Keeping releases reproducible
 
 - Build releases with JDK 21 (CI uses Temurin 21).
+- Keep `versionCode` and `versionName` as plain literals in `app/build.gradle.kts` (F-Droid's
+  update checker reads them with a regex) and bump both before tagging `v<versionName>`; the
+  release workflow refuses a tag that doesn't match (`scripts/check_release_version.py`).
 - Keep `dependenciesInfo { includeInApk = false }` in `app/build.gradle.kts`; the release
   workflow fails if the signed APK's signing block contains anything but signatures.
 - Keep `vcsInfo.include = false` on the release build type, so the APK doesn't depend on how
