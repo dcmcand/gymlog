@@ -13,11 +13,12 @@ android {
         applicationId = "io.github.dcmcand.gymlog"
         minSdk = 31
         targetSdk = 36
-        // Source of truth for versionCode: a clean literal so F-Droid can parse it and
-        // auto-build each new git tag. Bump on every release (scheme: major*10000 +
-        // minor*100 + patch), then tag v<versionName>.
-        versionCode = 20000
-        versionName = System.getenv("VERSION_NAME") ?: "2.0"
+        // Source of truth for the version: clean literals so F-Droid's update checker can parse
+        // them and rebuild each new git tag reproducibly. Bump both on every release (versionCode
+        // scheme: major*10000 + minor*100 + patch), then tag v<versionName>; the release
+        // workflow refuses a tag that doesn't match.
+        versionCode = 20001
+        versionName = "2.0.1"
     }
 
     val keystoreFile = System.getenv("KEYSTORE_FILE")
@@ -35,6 +36,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Otherwise AGP embeds the git revision, so the APK would depend on how the source was
+            // checked out (F-Droid rebuilds it and compares byte for byte).
+            vcsInfo.include = false
             signingConfig = if (keystoreFile != null) {
                 signingConfigs.getByName("release")
             } else {
@@ -50,6 +54,13 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    dependenciesInfo {
+        // AGP otherwise stores Google-encrypted dependency metadata in the APK signing block.
+        // F-Droid publishes our signed APK as-is (reproducible builds) and rejects that blob.
+        // The bundle keeps it (default) for Google Play.
+        includeInApk = false
     }
 }
 

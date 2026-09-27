@@ -22,6 +22,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Check tag matches the app version
+        run: python3 scripts/check_release_version.py "${GITHUB_REF_NAME}"
+
       - name: Run unit tests
         run: ./gradlew test
 
@@ -29,7 +32,6 @@ jobs:
         id: version
         run: |
           TAG="${GITHUB_REF#refs/tags/v}"
-          echo "VERSION_NAME=$TAG" >> "$GITHUB_OUTPUT"
           # Same scheme as versionCode in app/build.gradle.kts; picks the fastlane changelog.
           IFS='.' read -r MA MI PA <<< "$TAG"
           VERSION_CODE=$(( ${MA:-0} * 10000 + ${MI:-0} * 100 + ${PA:-0} ))
@@ -41,12 +43,14 @@ jobs:
 
       - name: Build release APK
         env:
-          VERSION_NAME: ${{ steps.version.outputs.VERSION_NAME }}
           KEYSTORE_FILE: /tmp/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease
+
+      - name: Check APK signing block (F-Droid reproducible builds)
+        run: python3 scripts/apk_check.py signing-block app/build/outputs/apk/release/app-release.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
