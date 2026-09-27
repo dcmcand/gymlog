@@ -19,6 +19,8 @@ Builds:
     subdir: app
     gradle:
       - yes
+    scandelete:
+      - pebble
 
 AllowedAPKSigningKeys: 6574c5fd7658265792b342c53246205f743fdcbfa35ddf0255e0885e30b9e4b7
 

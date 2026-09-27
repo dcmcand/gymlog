@@ -518,3 +518,25 @@ git add docs/superpowers/plans/2026-09-27-fdroid-submission.md fdroid/io.github.
 git commit -m "Record F-Droid reproducibility evidence for 2.0.1"
 ```
 Ask the user before pushing this commit (docs-only; can go to main via a small PR).
+
+## Evidence (2026-09-27)
+
+- **Release v2.0.1** (PR #37, tag `v2.0.1` at c1c2cd3): release.yml guard steps printed
+  `OK: v2.0.1 matches versionName 2.0.1 / versionCode 20001` and a signing block of only
+  `0x7109871a APK Signature Scheme v2` + `0x42726577 verity padding` -> `OK, signatures and padding only`.
+- **Published APK:** `apk_check.py signing-block` OK; signer certificate SHA-256
+  `6574c5fd7658265792b342c53246205f743fdcbfa35ddf0255e0885e30b9e4b7` (= `AllowedAPKSigningKeys`).
+- **Container:** `registry.gitlab.com/fdroid/docker-executable-fdroidserver:master`, Debian 13,
+  OpenJDK 21.0.12.1 (no `sudo:` JDK lines needed). Run as the local user with
+  `-e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=*` and fdroiddata's
+  `config/` copied in (needed for the `Workout` category).
+- **fdroid lint:** exit 0; a fake category exits 1. **rewritemeta:** no changes.
+- **fdroid checkupdates:** `Manifest exists in subdir 'app'. Found version 2.0.1 (20001)` at tag v2.0.1.
+- **fdroid build io.github.dcmcand.gymlog:20001:** first run failed the source scan
+  (`Found dependency file without lock at pebble/package.json`); fixed with `scandelete: [pebble]`
+  (ledger ruling). Second run: `Successfully built io.github.dcmcand.gymlog:20001 from c1c2cd3...`,
+  `...retrieving https://github.com/dcmcand/gymlog/releases/download/v2.0.1/app-release.apk`,
+  `compared built binary to supplied reference binary successfully`,
+  `supplied reference binary has allowed signer 6574c5fd...b7`, `success: io.github.dcmcand.gymlog`.
+- **apk_check.py compare** (signed GitHub APK vs F-Droid's unsigned build):
+  `OK: 146 entries identical outside the signing block`, exit 0.
