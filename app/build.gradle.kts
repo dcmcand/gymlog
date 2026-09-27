@@ -35,6 +35,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Otherwise AGP embeds the git revision, so the APK would depend on how the source was
+            // checked out (F-Droid rebuilds it and compares byte for byte).
+            vcsInfo.include = false
             signingConfig = if (keystoreFile != null) {
                 signingConfigs.getByName("release")
             } else {
@@ -50,6 +53,13 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    dependenciesInfo {
+        // AGP otherwise stores Google-encrypted dependency metadata in the APK signing block.
+        // F-Droid publishes our signed APK as-is (reproducible builds) and rejects that blob.
+        // The bundle keeps it (default) for Google Play.
+        includeInApk = false
     }
 }
 

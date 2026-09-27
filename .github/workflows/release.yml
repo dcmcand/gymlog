@@ -48,6 +48,9 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease
 
+      - name: Check APK signing block (F-Droid reproducible builds)
+        run: python3 scripts/apk_check.py signing-block app/build/outputs/apk/release/app-release.apk
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
