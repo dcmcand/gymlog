@@ -1,5 +1,7 @@
 package com.gymlog.app.ui.settings
 
+import android.content.ActivityNotFoundException
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,10 +26,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,7 +50,11 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onNavigateBack: () -> Unit) {
+fun SettingsScreen(
+    onNavigateBack: () -> Unit,
+    // Called after a successful import so screens holding now-deleted rows can be discarded.
+    onDataImported: () -> Unit = {},
+) {
     val context = LocalContext.current
     val service = remember {
         BackupService(GymLogDatabase.getDatabase(context).backupDao(), onDataReplaced = {
@@ -62,6 +70,8 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     var busy by remember { mutableStateOf(false) }
+    // The picked file survives rotation; its preview (not saveable) is rebuilt from it.
+    var pickedUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var pendingImport by remember { mutableStateOf<ImportPreview?>(null) }
 
     // Runs [work] off the main thread with the buttons disabled; its result or error goes to
@@ -87,21 +97,43 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         if (uri == null) return@rememberLauncherForActivityResult // picker cancelled
         runBackupTask {
             val export = service.export(appVersion)
-            // "wt" truncates, so overwriting a longer existing file can't leave stale bytes.
-            context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(export.json.toByteArray()) }
+            openForOverwrite { mode -> context.contentResolver.openOutputStream(uri, mode) }
+                ?.use { it.write(export.json.toByteArray()) }
                 ?: throw IOException("could not open $uri")
             "Exported ${workoutCount(export.workoutCount)}"
         }
     }
 
-    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult // picker cancelled
-        runBackupTask {
+    fun previewPicked(uri: Uri) = runBackupTask {
+        try {
             val text = context.contentResolver.openInputStream(uri)?.use { readBackupText(it) }
                 ?: throw IOException("could not open $uri")
             val preview = service.preview(text)
             withContext(Dispatchers.Main) { pendingImport = preview }
-            null
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) { pickedUri = null }
+            throw e
+        }
+        null
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult // picker cancelled
+        pickedUri = uri
+        previewPicked(uri)
+    }
+
+    // After a rotation the dialog's preview is gone but the picked file is remembered.
+    LaunchedEffect(Unit) {
+        pickedUri?.let { if (pendingImport == null) previewPicked(it) }
+    }
+
+    // A ROM without a document picker would otherwise crash on launch.
+    fun launchPicker(launch: () -> Unit) {
+        try {
+            launch()
+        } catch (_: ActivityNotFoundException) {
+            scope.launch { snackbar.showSnackbar("No file manager is available to pick a file.") }
         }
     }
 
@@ -132,13 +164,13 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
             )
             Button(
-                onClick = { exportLauncher.launch(backupFileName(LocalDate.now())) },
+                onClick = { launchPicker { exportLauncher.launch(backupFileName(LocalDate.now())) } },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Export data") }
             OutlinedButton(
                 // Some file managers label .json as text/plain or octet-stream.
-                onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
+                onClick = { launchPicker { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Import data") }
@@ -149,20 +181,22 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
 
     pendingImport?.let { preview ->
         AlertDialog(
-            onDismissRequest = { pendingImport = null },
+            onDismissRequest = { pendingImport = null; pickedUri = null },
             title = { Text("Replace all data?") },
             text = { Text(importConfirmText(preview)) },
             confirmButton = {
                 TextButton(onClick = {
                     pendingImport = null
+                    pickedUri = null
                     runBackupTask {
                         service.import(preview)
+                        withContext(Dispatchers.Main) { onDataImported() }
                         "Imported ${workoutCount(preview.fileWorkouts)}"
                     }
                 }) { Text("Replace") }
             },
             dismissButton = {
-                TextButton(onClick = { pendingImport = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingImport = null; pickedUri = null }) { Text("Cancel") }
             },
         )
     }

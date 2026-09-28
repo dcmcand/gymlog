@@ -108,7 +108,15 @@ fun GymLogNavigation(
                 )
             }
             composable(Screen.Settings.route) {
-                SettingsScreen(onNavigateBack = { navController.popBackStack() })
+                SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onDataImported = {
+                        // Saved tab back stacks (e.g. an open Edit Workout) may refer to rows the
+                        // import just replaced; drop them so those tabs start fresh.
+                        navController.clearBackStack(Screen.Workouts.route)
+                        navController.clearBackStack(Screen.Exercises.route)
+                    },
+                )
             }
             composable(Screen.Workouts.route) {
                 WorkoutListScreen(
