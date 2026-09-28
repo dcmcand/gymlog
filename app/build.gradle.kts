@@ -35,7 +35,13 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8: drop unused code and resources (mostly library code; the APK was ~48 MB).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             // Otherwise AGP embeds the git revision, so the APK would depend on how the source was
             // checked out (F-Droid rebuilds it and compares byte for byte).
             vcsInfo.include = false

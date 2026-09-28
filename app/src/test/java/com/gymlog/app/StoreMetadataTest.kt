@@ -40,6 +40,19 @@ class StoreMetadataTest {
     }
 
     @Test
+    fun `release builds are shrunk with R8`() {
+        // F-Droid asked for it; without it the APK is ~48 MB, mostly unused library code.
+        val gradle = File("build.gradle.kts").readText()
+        data class Case(val name: String, val ok: Boolean)
+        val cases = listOf(
+            Case("code shrinking on", hasSetting(gradle, "release", "isMinifyEnabled = true")),
+            Case("resource shrinking on", hasSetting(gradle, "release", "isShrinkResources = true")),
+            Case("project rules keep names readable", File("proguard-rules.pro").takeIf { it.exists() }?.readLines()?.any { it.trim() == "-dontobfuscate" } == true),
+        )
+        for (c in cases) assertTrue(c.name, c.ok)
+    }
+
+    @Test
     fun `release apks do not depend on how the source was checked out`() {
         // AGP embeds the git revision (or an error if it finds no .git dir) unless told not to,
         // so a worktree or tarball build would differ from F-Droid's clone.
