@@ -38,8 +38,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.backup.BackupService
-import com.gymlog.app.service.RestTimerService
+import com.gymlog.app.data.backup.DataReplaced
 import com.gymlog.app.data.backup.ImportPreview
+import com.gymlog.app.service.RestTimerService
 import com.gymlog.app.ui.workout.ActiveWorkoutStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -50,15 +51,12 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-    onNavigateBack: () -> Unit,
-    // Called after a successful import so screens holding now-deleted rows can be discarded.
-    onDataImported: () -> Unit = {},
-) {
+fun SettingsScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val service = remember {
         BackupService(GymLogDatabase.getDatabase(context).backupDao(), onDataReplaced = {
             ActiveWorkoutStore.clear()
+            DataReplaced.signal()
             // A leftover rest timer would point at a session id that now means something else.
             val timer = RestTimerService.timerState.value
             if (timer.isRunning || timer.sessionId != null) RestTimerService.stop(context)
@@ -125,7 +123,8 @@ fun SettingsScreen(
 
     // After a rotation the dialog's preview is gone but the picked file is remembered.
     LaunchedEffect(Unit) {
-        pickedUri?.let { if (pendingImport == null) previewPicked(it) }
+        // busy covers a picker result delivered on recreation that already started a preview.
+        pickedUri?.let { if (pendingImport == null && !busy) previewPicked(it) }
     }
 
     // A ROM without a document picker would otherwise crash on launch.
@@ -190,7 +189,6 @@ fun SettingsScreen(
                     pickedUri = null
                     runBackupTask {
                         service.import(preview)
-                        withContext(Dispatchers.Main) { onDataImported() }
                         "Imported ${workoutCount(preview.fileWorkouts)}"
                     }
                 }) { Text("Replace") }

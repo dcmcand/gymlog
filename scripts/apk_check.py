@@ -111,6 +111,11 @@ def compare(signed, unsigned):
     if blk is None:
         print(f"FAIL: {signed} has no signing block")
         return 1
+    try:
+        _pairs(ds, *blk)
+    except (Malformed, struct.error) as e:
+        print(f"FAIL: {signed} has a malformed signing block: {e}")
+        return 1
     start, cd_s = blk
     cd_u, end_u = _eocd(du)
     _, end_s = _eocd(ds)

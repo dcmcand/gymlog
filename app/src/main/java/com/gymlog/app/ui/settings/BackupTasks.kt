@@ -40,8 +40,8 @@ suspend fun <T> runToCompletion(block: suspend () -> T): T =
 
 /**
  * Opens the export target for overwriting. "wt" truncates, so a longer existing file can't keep
- * stale bytes; a few providers reject that mode, and since CreateDocument always hands back a
- * new, empty file, plain "w" is then safe.
+ * stale bytes; a few providers reject that mode, and since CreateDocument normally hands back a
+ * new, empty file (the system picker renames on conflict), plain "w" is then an acceptable fallback.
  */
 fun openForOverwrite(open: (mode: String) -> OutputStream?): OutputStream? =
     try {

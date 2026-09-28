@@ -32,3 +32,6 @@ CLAUDE.md
 
 # Kotlin 2.x compiler/session data
 .kotlin/
+
+# Python bytecode (scripts/)
+__pycache__/

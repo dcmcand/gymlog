@@ -22,17 +22,27 @@ def make_zip(entries):
     return buf.getvalue()
 
 
-def add_signing_block(zipdata, pairs, size=None, trailing_size=None):
-    """Insert an APK Signing Block before the central directory, like apksigner does."""
+def add_signing_block(zipdata, pairs, size=None, trailing_size=None, extra=b""):
+    """Insert an APK Signing Block before the central directory, like apksigner does.
+    [extra] is appended after the pairs (inside the block) to fake a truncated pair."""
     end = zipdata.rfind(b"PK\x05\x06")
     cd = struct.unpack("<I", zipdata[end + 16:end + 20])[0]
-    body = b"".join(struct.pack("<QI", len(v) + 4, i) + v for i, v in pairs)
+    body = b"".join(struct.pack("<QI", len(v) + 4, i) + v for i, v in pairs) + extra
     real = len(body) + 24  # pairs + trailing size field + magic
     lead = struct.pack("<Q", real if size is None else size)
     tail = struct.pack("<Q", real if trailing_size is None else trailing_size) + apk_check.MAGIC
     block = lead + body + tail
     eocd = zipdata[end:end + 16] + struct.pack("<I", cd + len(block)) + zipdata[end + 20:]
     return zipdata[:cd] + block + zipdata[cd:end] + eocd
+
+
+def overrun(apk):
+    """Rewrite the first pair's length so it runs past the end of the block."""
+    end = apk.rfind(b"PK\x05\x06")
+    cd = struct.unpack("<I", apk[end + 16:end + 20])[0]
+    size = struct.unpack("<Q", apk[cd - 24:cd - 16])[0]
+    first_pair = cd - (size + 8) + 8
+    return apk[:first_pair] + struct.pack("<Q", 10**6) + apk[first_pair + 8:]
 
 
 class ApkCheckTest(unittest.TestCase):
@@ -64,6 +74,8 @@ class ApkCheckTest(unittest.TestCase):
             ("block size below the 24-byte minimum", add_signing_block(self.unsigned, [], size=16, trailing_size=16), 1, "malformed"),
             ("size fields disagree", add_signing_block(self.unsigned, [(V2, b"sig")], size=999), 1, "malformed"),
             ("absurd size", add_signing_block(self.unsigned, [(V2, b"sig")], size=10**12, trailing_size=10**12), 1, "malformed"),
+            ("pair overruns the block", overrun(add_signing_block(self.unsigned, [(V2, b"sig")])), 1, "overruns"),
+            ("truncated pair", add_signing_block(self.unsigned, [(V2, b"sig")], extra=b"\0" * 7), 1, "truncated"),
         ]
         for name, data, code, text in cases:
             with self.subTest(name):
@@ -80,6 +92,7 @@ class ApkCheckTest(unittest.TestCase):
             ("different order", signed, make_zip([("b.txt", b"world"), ("a.txt", b"hello")]), 1, "order differs"),
             ("duplicate entry", signed, dup, 1, "entry count differs"),
             ("second argument is signed", signed, signed, 1, "is signed"),
+            ("first argument's block is malformed", add_signing_block(self.unsigned, [(V2, b"sig")], size=999), self.unsigned, 1, "malformed"),
         ]
         for name, a, b, code, text in cases:
             with self.subTest(name):

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -316,8 +317,11 @@ fun ActiveWorkoutScreen(
                     Surface(tonalElevation = 3.dp) {
                         Button(
                             onClick = { showFinishDialog = true },
+                            // This bar replaces the app's bottom nav here, so it has to keep
+                            // clear of the system navigation bar itself (edge-to-edge).
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .navigationBarsPadding()
                                 .padding(16.dp),
                             enabled = sessionId != null
                         ) {

@@ -4,9 +4,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -14,7 +14,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -25,15 +29,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.gymlog.app.data.backup.DataReplaced
 import com.gymlog.app.ui.calendar.CalendarScreen
 import com.gymlog.app.ui.calendar.WorkoutDetailScreen
 import com.gymlog.app.ui.exercises.ExerciseListScreen
-import com.gymlog.app.ui.workouts.EditWorkoutScreen
-import com.gymlog.app.ui.workouts.WorkoutListScreen
 import com.gymlog.app.ui.progress.ExerciseProgressScreen
 import com.gymlog.app.ui.settings.SettingsScreen
 import com.gymlog.app.ui.workout.ActiveWorkoutScreen
 import com.gymlog.app.ui.workout.WorkoutPickerScreen
+import com.gymlog.app.ui.workouts.EditWorkoutScreen
+import com.gymlog.app.ui.workouts.WorkoutListScreen
 
 data class BottomNavItem(val screen: Screen, val label: String, val icon: ImageVector)
 
@@ -50,6 +55,19 @@ fun GymLogNavigation(
                 launchSingleTop = true
             }
             onPendingSessionConsumed()
+        }
+    }
+
+    // After an import, saved tab back stacks (e.g. an open Edit Workout) may refer to rows that
+    // no longer exist; drop them so those tabs start fresh. The handled count is saveable so a
+    // rotation doesn't clear them again.
+    val importsDone by DataReplaced.generation.collectAsState()
+    var importsHandled by rememberSaveable { mutableIntStateOf(importsDone) }
+    LaunchedEffect(importsDone) {
+        if (importsDone > importsHandled) {
+            navController.clearBackStack(Screen.Workouts.route)
+            navController.clearBackStack(Screen.Exercises.route)
+            importsHandled = importsDone
         }
     }
 
@@ -115,15 +133,7 @@ fun GymLogNavigation(
                 )
             }
             composable(Screen.Settings.route) {
-                SettingsScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onDataImported = {
-                        // Saved tab back stacks (e.g. an open Edit Workout) may refer to rows the
-                        // import just replaced; drop them so those tabs start fresh.
-                        navController.clearBackStack(Screen.Workouts.route)
-                        navController.clearBackStack(Screen.Exercises.route)
-                    },
-                )
+                SettingsScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(Screen.Workouts.route) {
                 WorkoutListScreen(
