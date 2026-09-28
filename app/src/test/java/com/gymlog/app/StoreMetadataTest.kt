@@ -1,5 +1,6 @@
 package com.gymlog.app
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.DataInputStream
@@ -11,11 +12,31 @@ import java.io.File
  */
 class StoreMetadataTest {
 
+    /** True if [block] { ... } contains [setting] on its own, uncommented line. */
+    private fun hasSetting(gradle: String, block: String, setting: String): Boolean {
+        val body = Regex("""(?s)\b${Regex.escape(block)}\s*\{([^}]*)""").find(gradle)?.groupValues?.get(1) ?: return false
+        val want = setting.replace(" ", "")
+        return body.lines().any { it.trim().replace(" ", "") == want }
+    }
+
+    @Test
+    fun `setting checks ignore commented-out lines`() {
+        data class Case(val name: String, val gradle: String, val expected: Boolean)
+        val cases = listOf(
+            Case("set", "dependenciesInfo {\n    includeInApk = false\n}", true),
+            Case("commented out", "dependenciesInfo {\n    // includeInApk = false\n}", false),
+            Case("inline comment", "dependenciesInfo { // includeInApk = false\n}", false),
+            Case("set to true", "dependenciesInfo {\n    includeInApk = true\n}", false),
+            Case("block missing", "android {\n}", false),
+        )
+        for (c in cases) assertEquals(c.name, c.expected, hasSetting(c.gradle, "dependenciesInfo", "includeInApk = false"))
+    }
+
     @Test
     fun `apks carry no google-encrypted dependency blob`() {
         // F-Droid ships our signing block as-is for reproducible builds, and rejects this blob.
         val gradle = File("build.gradle.kts").readText()
-        assertTrue(Regex("""dependenciesInfo\s*\{[^}]*includeInApk\s*=\s*false""").containsMatchIn(gradle))
+        assertTrue(hasSetting(gradle, "dependenciesInfo", "includeInApk = false"))
     }
 
     @Test
@@ -23,7 +44,7 @@ class StoreMetadataTest {
         // AGP embeds the git revision (or an error if it finds no .git dir) unless told not to,
         // so a worktree or tarball build would differ from F-Droid's clone.
         val gradle = File("build.gradle.kts").readText()
-        assertTrue(Regex("""release\s*\{[^}]*vcsInfo\.include\s*=\s*false""").containsMatchIn(gradle))
+        assertTrue(hasSetting(gradle, "release", "vcsInfo.include = false"))
     }
 
     @Test
@@ -47,7 +68,7 @@ class StoreMetadataTest {
         val short = File(listing, "short_description.txt").readText().trim()
         data class Case(val name: String, val ok: Boolean)
         val cases = mutableListOf(
-            Case("short description under 80 characters (${short.length})", short.length < 80),
+            Case("short description at most 80 characters (${short.length})", short.length <= 80),
             Case("short description has no trailing period", !short.endsWith(".")),
             Case("title present", File(listing, "title.txt").readText().isNotBlank()),
         )
@@ -67,7 +88,12 @@ class StoreMetadataTest {
             assertTrue("PNG signature", header.copyOfRange(1, 4).decodeToString() == "PNG")
             val width = input.readInt()
             val height = input.readInt()
+            val bitDepth = input.readUnsignedByte()
+            val colorType = input.readUnsignedByte()
             assertTrue("512x512 (was ${width}x$height)", width == 512 && height == 512)
+            // Play wants a "32-bit PNG (with alpha)": 8 bits per channel, RGBA (color type 6).
+            assertTrue("8 bits per channel (was $bitDepth)", bitDepth == 8)
+            assertTrue("RGBA color type 6 (was $colorType)", colorType == 6)
         }
     }
 }
