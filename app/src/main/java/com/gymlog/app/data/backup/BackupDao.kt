@@ -30,6 +30,9 @@ abstract class BackupDao : BackupStore {
     @Insert abstract suspend fun insertSessions(items: List<WorkoutSession>)
     @Insert abstract suspend fun insertSets(items: List<ExerciseSet>)
 
+    @Query("SELECT COUNT(*) FROM workout_sessions")
+    abstract override suspend fun countSessions(): Int
+
     @Query("SELECT EXISTS(SELECT 1 FROM workout_sessions WHERE status = 'IN_PROGRESS')")
     abstract override suspend fun hasWorkoutInProgress(): Boolean
 
@@ -42,6 +45,8 @@ abstract class BackupDao : BackupStore {
     // hold at every step. Explicit ids advance SQLite's autoincrement past the imported maximum.
     @Transaction
     override suspend fun replaceAll(data: BackupData) {
+        // Checked inside the transaction so nothing can start a workout between check and wipe.
+        if (hasWorkoutInProgress()) throw BackupException.WorkoutInProgress()
         deleteAllSets()
         deleteAllSessions()
         deleteAllWorkoutExercises()

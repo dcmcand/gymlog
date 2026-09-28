@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.backup.BackupService
+import com.gymlog.app.service.RestTimerService
 import com.gymlog.app.data.backup.ImportPreview
 import com.gymlog.app.ui.workout.ActiveWorkoutStore
 import kotlinx.coroutines.CancellationException
@@ -48,7 +49,12 @@ import java.time.LocalDate
 fun SettingsScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
     val service = remember {
-        BackupService(GymLogDatabase.getDatabase(context).backupDao(), onDataReplaced = { ActiveWorkoutStore.clear() })
+        BackupService(GymLogDatabase.getDatabase(context).backupDao(), onDataReplaced = {
+            ActiveWorkoutStore.clear()
+            // A leftover rest timer would point at a session id that now means something else.
+            val timer = RestTimerService.timerState.value
+            if (timer.isRunning || timer.sessionId != null) RestTimerService.stop(context)
+        })
     }
     val appVersion = remember {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""

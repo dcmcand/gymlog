@@ -24,7 +24,7 @@ class BackupService(
     suspend fun preview(text: String): ImportPreview {
         if (store.hasWorkoutInProgress()) throw BackupException.WorkoutInProgress()
         val data = BackupCodec.decode(text)
-        return ImportPreview(data, fileWorkouts = data.sessions.size, deviceWorkouts = store.readAll().sessions.size)
+        return ImportPreview(data, fileWorkouts = data.sessions.size, deviceWorkouts = store.countSessions())
     }
 
     suspend fun import(preview: ImportPreview) {
