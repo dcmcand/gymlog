@@ -17,8 +17,8 @@ android {
         // them and rebuild each new git tag reproducibly. Bump both on every release (versionCode
         // scheme: major*10000 + minor*100 + patch), then tag v<versionName>; the release
         // workflow refuses a tag that doesn't match.
-        versionCode = 20001
-        versionName = "2.0.1"
+        versionCode = 20002
+        versionName = "2.0.2"
     }
 
     val keystoreFile = System.getenv("KEYSTORE_FILE")

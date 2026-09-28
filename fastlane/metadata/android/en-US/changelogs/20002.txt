@@ -1,0 +1,1 @@
+Fixes: no more blank gap above the title bar. Backup import now rejects damaged files instead of crashing later, accepts files re-saved by Windows editors, keeps its confirmation through rotation, and works on devices without a file manager app. Smaller robustness fixes throughout.
