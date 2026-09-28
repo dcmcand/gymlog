@@ -1,5 +1,7 @@
 package com.gymlog.app.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -62,6 +64,10 @@ fun GymLogNavigation(
     val showBottomBar = currentRoute in bottomNavItems.map { it.screen.route }
 
     Scaffold(
+        // Each screen's own Scaffold/TopAppBar handles the status bar (the app is edge-to-edge
+        // since it targets SDK 35+); applying it here too pushed every title bar down by a
+        // second status-bar height.
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
@@ -89,7 +95,8 @@ fun GymLogNavigation(
         NavHost(
             navController = navController,
             startDestination = Screen.Calendar.route,
-            modifier = Modifier.padding(innerPadding)
+            // Tell the screens the bottom bar already covers the navigation-bar inset.
+            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
         ) {
             composable(Screen.Calendar.route) {
                 CalendarScreen(
