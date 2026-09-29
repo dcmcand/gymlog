@@ -62,4 +62,35 @@ class BackupTasksTest {
         } catch (_: BackupException.Corrupt) {
         }
     }
+
+    @Test
+    fun `export falls back to plain write mode when a provider rejects truncate`() {
+        data class Case(val name: String, val failWt: Throwable?, val expectedModes: List<String>, val opened: Boolean)
+        val cases = listOf(
+            Case("truncate supported", null, listOf("wt"), true),
+            Case("provider rejects wt (FileNotFound)", java.io.FileNotFoundException("wt"), listOf("wt", "w"), true),
+            Case("provider rejects wt (IllegalArgument)", IllegalArgumentException("wt"), listOf("wt", "w"), true),
+            Case("provider rejects wt (Unsupported)", UnsupportedOperationException("wt"), listOf("wt", "w"), true),
+        )
+        for (c in cases) {
+            val tried = mutableListOf<String>()
+            val out = openForOverwrite { mode ->
+                tried += mode
+                if (mode == "wt" && c.failWt != null) throw c.failWt
+                java.io.ByteArrayOutputStream()
+            }
+            assertEquals(c.name, c.expectedModes, tried)
+            assertEquals(c.name, c.opened, out != null)
+        }
+    }
+
+    @Test
+    fun `other export errors are not swallowed`() {
+        try {
+            openForOverwrite { throw SecurityException("no access") }
+            fail("expected SecurityException")
+        } catch (_: SecurityException) {
+        }
+    }
 }
+

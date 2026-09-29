@@ -5,7 +5,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.FileNotFoundException
 import java.io.InputStream
+import java.io.OutputStream
 
 /** Real backups are a few hundred KB; anything this big is not one. */
 const val MAX_BACKUP_BYTES = 32L * 1024 * 1024
@@ -35,3 +37,19 @@ fun readBackupText(input: InputStream, limit: Long = MAX_BACKUP_BYTES): String {
  */
 suspend fun <T> runToCompletion(block: suspend () -> T): T =
     withContext(NonCancellable + Dispatchers.IO) { block() }
+
+/**
+ * Opens the export target for overwriting. "wt" truncates, so a longer existing file can't keep
+ * stale bytes; a few providers reject that mode, and since CreateDocument normally hands back a
+ * new, empty file (the system picker renames on conflict), plain "w" is then an acceptable fallback.
+ */
+fun openForOverwrite(open: (mode: String) -> OutputStream?): OutputStream? =
+    try {
+        open("wt")
+    } catch (_: FileNotFoundException) {
+        open("w")
+    } catch (_: IllegalArgumentException) {
+        open("w")
+    } catch (_: UnsupportedOperationException) {
+        open("w")
+    }

@@ -22,6 +22,11 @@ class AppIdTest {
             Case("watchapp lists the new package", pebble.contains("\"package\": \"io.github.dcmcand.gymlog\"")),
             // Kept while users move from the old install; drop in a later release.
             Case("watchapp still lists the old package", pebble.contains("\"package\": \"com.gymlog.app\"")),
+            // The Pebble app talks to the first listed companion that is installed.
+            Case(
+                "new package is listed before the old one",
+                pebble.indexOf("\"io.github.dcmcand.gymlog\"").let { it >= 0 && it < pebble.indexOf("\"com.gymlog.app\"") },
+            ),
         )
         for (c in cases) assertTrue(c.name, c.ok)
     }

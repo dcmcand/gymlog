@@ -25,6 +25,9 @@ jobs:
       - name: Run unit tests
         run: ./gradlew test
 
+      - name: Test release scripts
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
       - name: Build debug APK
         run: ./gradlew assembleDebug
 

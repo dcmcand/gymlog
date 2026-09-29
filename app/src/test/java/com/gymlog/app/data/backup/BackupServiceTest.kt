@@ -10,7 +10,9 @@ import java.time.Instant
 
 private class FakeStore(var data: BackupData, var inProgress: Boolean = false) : BackupStore {
     var replaceCalls = 0
-    override suspend fun readAll() = data
+    var readAllCalls = 0
+    override suspend fun readAll() = data.also { readAllCalls++ }
+    override suspend fun countSessions() = data.sessions.size
     override suspend fun replaceAll(data: BackupData) {
         replaceCalls++
         this.data = data
@@ -42,6 +44,7 @@ class BackupServiceTest {
         assertEquals(2, preview.fileWorkouts)
         assertEquals(0, preview.deviceWorkouts)
         assertEquals(0, store.replaceCalls)
+        assertEquals("preview only counts, it doesn't read the whole database", 0, store.readAllCalls)
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.gymlog.app.data.backup
 
+import com.gymlog.app.data.SessionStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -76,6 +77,13 @@ class BackupCodecTest {
             Case("workoutExercise -> missing exercise", broken { it.copy(workoutExercises = it.workoutExercises.map { w -> w.copy(exerciseId = 999) }) }, { it is BackupException.Corrupt }),
             Case("session -> missing workout", broken { it.copy(sessions = it.sessions.map { x -> if (x.id == 30L) x.copy(workoutId = 999) else x }) }, { it is BackupException.Corrupt }),
             Case("duplicate set id", broken { it.copy(sets = it.sets.map { s -> if (s.id == 41L) s.copy(id = 40) else s }) }, { it is BackupException.Corrupt }),
+            // Exercise.displayName() needs fixedValue for fixed-dimension cardio; several screens crash without it.
+            Case("fixed-dimension cardio without a fixed value", broken { it.copy(exercises = it.exercises.map { e -> if (e.id == 2L) e.copy(fixedValue = null) else e }) }, { it is BackupException.Corrupt }),
+            // The app assumes at most one in-progress workout (getInProgressSession uses LIMIT 1).
+            Case("two workouts in progress", broken { it.copy(sessions = it.sessions.map { x -> x.copy(status = SessionStatus.IN_PROGRESS, completedAt = null) }) }, { it is BackupException.Corrupt }),
+            // Room treats id 0 as "generate one", so it would silently renumber or break references.
+            Case("zero id", broken { it.copy(sets = it.sets.map { s -> if (s.id == 44L) s.copy(id = 0) else s }) }, { it is BackupException.Corrupt }),
+            Case("negative id", broken { it.copy(sets = it.sets.map { s -> if (s.id == 44L) s.copy(id = -5) else s }) }, { it is BackupException.Corrupt }),
         )
         for (c in cases) {
             assertTrue("fixture for '${c.name}' must differ from the good file", c.text != good)
@@ -86,6 +94,13 @@ class BackupCodecTest {
                 assertTrue("${c.name}: wrong error ${e::class.simpleName}", c.check(e))
             }
         }
+    }
+
+    @Test
+    fun `a leading byte order mark is ignored`() {
+        // Some Windows editors add one when re-saving a file.
+        val json = "\uFEFF" + BackupCodec.encode(sampleBackupData(), exportedAt, "1.5")
+        assertEquals(sampleBackupData(), BackupCodec.decode(json))
     }
 
     @Test

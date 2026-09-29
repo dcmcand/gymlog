@@ -1,10 +1,12 @@
 package com.gymlog.app.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -12,7 +14,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -23,15 +29,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.gymlog.app.data.backup.DataReplaced
 import com.gymlog.app.ui.calendar.CalendarScreen
 import com.gymlog.app.ui.calendar.WorkoutDetailScreen
 import com.gymlog.app.ui.exercises.ExerciseListScreen
-import com.gymlog.app.ui.workouts.EditWorkoutScreen
-import com.gymlog.app.ui.workouts.WorkoutListScreen
 import com.gymlog.app.ui.progress.ExerciseProgressScreen
 import com.gymlog.app.ui.settings.SettingsScreen
 import com.gymlog.app.ui.workout.ActiveWorkoutScreen
 import com.gymlog.app.ui.workout.WorkoutPickerScreen
+import com.gymlog.app.ui.workouts.EditWorkoutScreen
+import com.gymlog.app.ui.workouts.WorkoutListScreen
 
 data class BottomNavItem(val screen: Screen, val label: String, val icon: ImageVector)
 
@@ -51,6 +58,21 @@ fun GymLogNavigation(
         }
     }
 
+    // After an import, saved tab back stacks (e.g. an open Edit Workout) may refer to rows that
+    // no longer exist; drop them so those tabs start fresh. The handled count is saveable so a
+    // rotation doesn't clear them again.
+    val importsDone by DataReplaced.generation.collectAsState()
+    var importsHandled by rememberSaveable { mutableIntStateOf(importsDone) }
+    LaunchedEffect(importsDone) {
+        if (importsDone > importsHandled) {
+            navController.clearBackStack(Screen.Workouts.route)
+            navController.clearBackStack(Screen.Exercises.route)
+        }
+        // Always catch up: after process death the count restarts at 0 but the saved value
+        // doesn't, and staying ahead would make the next import skip the reset.
+        importsHandled = importsDone
+    }
+
     val bottomNavItems = listOf(
         BottomNavItem(Screen.Calendar, "Calendar", Icons.Default.DateRange),
         BottomNavItem(Screen.Workouts, "Workouts", Icons.AutoMirrored.Filled.List),
@@ -62,6 +84,10 @@ fun GymLogNavigation(
     val showBottomBar = currentRoute in bottomNavItems.map { it.screen.route }
 
     Scaffold(
+        // Each screen's own Scaffold/TopAppBar handles the status bar (the app is edge-to-edge
+        // since it targets SDK 35+); applying it here too pushed every title bar down by a
+        // second status-bar height.
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
@@ -89,7 +115,8 @@ fun GymLogNavigation(
         NavHost(
             navController = navController,
             startDestination = Screen.Calendar.route,
-            modifier = Modifier.padding(innerPadding)
+            // Tell the screens the bottom bar already covers the navigation-bar inset.
+            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
         ) {
             composable(Screen.Calendar.route) {
                 CalendarScreen(
