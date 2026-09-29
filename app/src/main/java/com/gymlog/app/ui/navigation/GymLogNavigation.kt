@@ -67,8 +67,10 @@ fun GymLogNavigation(
         if (importsDone > importsHandled) {
             navController.clearBackStack(Screen.Workouts.route)
             navController.clearBackStack(Screen.Exercises.route)
-            importsHandled = importsDone
         }
+        // Always catch up: after process death the count restarts at 0 but the saved value
+        // doesn't, and staying ahead would make the next import skip the reset.
+        importsHandled = importsDone
     }
 
     val bottomNavItems = listOf(
