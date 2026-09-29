@@ -13,9 +13,9 @@ Repo: https://github.com/dcmcand/gymlog.git
 Binaries: https://github.com/dcmcand/gymlog/releases/download/v%v/app-release.apk
 
 Builds:
-  - versionName: 2.0.1
-    versionCode: 20001
-    commit: c1c2cd3378e8eebe2e4cd4fb8453459410ebc904
+  - versionName: 2.0.2
+    versionCode: 20002
+    commit: d7353f14fd82a609f8f19c6f2664f6dc1437f732
     subdir: app
     gradle:
       - yes
@@ -26,5 +26,5 @@ AllowedAPKSigningKeys: 6574c5fd7658265792b342c53246205f743fdcbfa35ddf0255e0885e3
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 2.0.1
-CurrentVersionCode: 20001
+CurrentVersion: 2.0.2
+CurrentVersionCode: 20002
