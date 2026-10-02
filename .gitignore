@@ -35,3 +35,6 @@ CLAUDE.md
 
 # Python bytecode (scripts/)
 __pycache__/
+
+# Play Console ownership snippet (scripts/build_ownership_proof.sh); never commit it
+app/src/main/assets/adi-registration.properties
