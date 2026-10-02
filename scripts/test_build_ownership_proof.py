@@ -71,6 +71,24 @@ class BuildOwnershipProofTest(unittest.TestCase):
                     with zipfile.ZipFile(proof) as z:
                         self.assertEqual(snippet, z.read("assets/adi-registration.properties"))
 
+    def test_output_shows_what_went_into_the_apk(self):
+        # A BOM or CRLF prints like a correct snippet, so the script must point them out.
+        cases = [
+            # name, snippet bytes, expected in stdout, not expected in stdout
+            ("plain snippet: byte count, no warning", b"token-abc\n", ["10 bytes"], ["WARNING"]),
+            ("utf-8 BOM flagged", b"\xef\xbb\xbftoken-abc\n", ["13 bytes", "WARNING", "BOM"], []),
+            ("CRLF flagged", b"token-abc\r\n", ["11 bytes", "WARNING", "CR"], []),
+        ]
+        for name, snippet, want, unwanted in cases:
+            with self.subTest(name):
+                self.new_root()
+                r = self.run_script(FAKE_GRADLE_OK, snippet)
+                self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+                for w in want:
+                    self.assertIn(w, r.stdout)
+                for u in unwanted:
+                    self.assertNotIn(u, r.stdout)
+
     def test_existing_asset_is_not_overwritten(self):
         self.new_root()
         existing = os.path.join(self.root, ASSET)

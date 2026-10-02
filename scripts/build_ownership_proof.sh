@@ -36,8 +36,16 @@ ${GRADLE:-./gradlew} clean assembleRelease
 
 mkdir -p build
 cp app/build/outputs/apk/release/app-release.apk build/ownership-proof.apk
-echo "Snippet inside the APK (between the markers):"
+packed=$(mktemp)
+unzip -p build/ownership-proof.apk assets/adi-registration.properties > "$packed"
+echo "Snippet inside the APK ($(wc -c < "$packed") bytes, between the markers):"
 echo "-----"
-unzip -p build/ownership-proof.apk assets/adi-registration.properties
+cat "$packed"
 echo "-----"
+# These print like a correct snippet but may make the Console reject the proof.
+[[ "$(head -c 3 "$packed" | od -An -tx1 | tr -d ' \n')" != "efbbbf" ]] ||
+    echo "WARNING: the snippet starts with a UTF-8 BOM; re-save it without one if the Console rejects the APK."
+! grep -q $'\r' "$packed" ||
+    echo "WARNING: the snippet has CR (Windows) line endings; re-save it with LF if the Console rejects the APK."
+rm -f "$packed"
 echo "Upload $root/build/ownership-proof.apk in Play Console. Do not publish it."
