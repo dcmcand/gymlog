@@ -74,6 +74,42 @@ class StoreMetadataTest {
         for (c in cases) assertTrue(c.name, c.ok)
     }
 
+    @Test
+    fun `release workflow uploads a signed aab as an artifact only`() {
+        val workflow = File("../.github/workflows/release.yml").readText()
+        // The GitHub release step runs from the gh-release action to the next job.
+        val releaseStep = workflow.substringAfter("softprops/action-gh-release").substringBefore("publish-pebble:")
+        data class Case(val name: String, val ok: Boolean)
+        val cases = listOf(
+            Case("bundle is built", workflow.contains("run: ./gradlew bundleRelease")),
+            Case("bundle is built after the APK guard", workflow.indexOf("bundleRelease") > workflow.indexOf("apk_check.py signing-block")),
+            Case("bundle goes to a workflow artifact", workflow.contains("uses: actions/upload-artifact@v7")),
+            Case("artifact name", workflow.contains("name: app-release-aab")),
+            Case("artifact path", workflow.contains("path: app/build/outputs/bundle/release/app-release.aab")),
+            Case("a missing bundle fails the release", workflow.contains("if-no-files-found: error")),
+            Case("release step found", releaseStep.length < workflow.length),
+            Case("github release still ships the apk", releaseStep.contains("files: app/build/outputs/apk/release/app-release.apk")),
+            Case("github release ships no aab", !releaseStep.contains(".aab")),
+        )
+        for (c in cases) assertTrue(c.name, c.ok)
+    }
+
+    @Test
+    fun `rest timer declares its special use for play review`() {
+        val manifest = File("src/main/AndroidManifest.xml").readText()
+        // The service element with a body (a self-closing tag has no room for the property).
+        val service = Regex("""(?s)<service\b[^>]*android:name="\.service\.RestTimerService"[^>]*[^/]>.*?</service>""")
+            .find(manifest)?.value.orEmpty()
+        data class Case(val name: String, val ok: Boolean)
+        val cases = listOf(
+            Case("RestTimerService has a body", service.isNotEmpty()),
+            Case("still specialUse (shortService is capped at about 3 minutes)", service.contains("""android:foregroundServiceType="specialUse"""")),
+            Case("subtype property declared", service.contains("""android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"""")),
+            Case("subtype explains the rest timer to the reviewer", Regex("""android:value="Rest timer between gym sets:[^"]{60,}"""").containsMatchIn(service)),
+        )
+        for (c in cases) assertTrue(c.name, c.ok)
+    }
+
     private val listing = File("../fastlane/metadata/android/en-US")
 
     @Test

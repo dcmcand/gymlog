@@ -33,7 +33,12 @@
         <service
             android:name=".service.RestTimerService"
             android:foregroundServiceType="specialUse"
-            android:exported="false" />
+            android:exported="false">
+            <!-- Play Console reviews this free-form text for the specialUse type. -->
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Rest timer between gym sets: a countdown the user starts by completing a set, shown as an ongoing notification (and on a paired watch) until the rest ends or the user stops or extends it." />
+        </service>
         <service
             android:name=".watch.GymLogPebbleListenerService"
             android:exported="true">

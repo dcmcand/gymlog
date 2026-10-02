@@ -52,6 +52,25 @@ jobs:
       - name: Check APK signing block (F-Droid reproducible builds)
         run: python3 scripts/apk_check.py signing-block app/build/outputs/apk/release/app-release.apk
 
+      # Google Play gets an AAB signed with this same key, which Play treats as the upload key
+      # (Play App Signing re-signs installs). It is a workflow artifact, not a release asset, so
+      # the public release stays APK-only.
+      - name: Build release AAB (Google Play)
+        env:
+          KEYSTORE_FILE: /tmp/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew bundleRelease
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
