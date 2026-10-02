@@ -128,21 +128,53 @@ class StoreMetadataTest {
         for (c in cases) assertTrue(c.name, c.ok)
     }
 
+    private data class PngInfo(val width: Int, val height: Int, val bitDepth: Int, val colorType: Int)
+
+    /** Reads the IHDR chunk. Color type 2 = RGB (no alpha), 6 = RGBA. */
+    private fun pngInfo(file: File): PngInfo = DataInputStream(file.inputStream()).use { input ->
+        val header = ByteArray(16).also { input.readFully(it) }
+        assertTrue("${file.name}: PNG signature", header.copyOfRange(1, 4).decodeToString() == "PNG")
+        PngInfo(input.readInt(), input.readInt(), input.readUnsignedByte(), input.readUnsignedByte())
+    }
+
     @Test
     fun `store icon is a 512 px square png`() {
         val icon = File(listing, "images/icon.png")
         assertTrue("icon.png exists", icon.exists())
-        DataInputStream(icon.inputStream()).use { input ->
-            val header = ByteArray(16).also { input.readFully(it) }
-            assertTrue("PNG signature", header.copyOfRange(1, 4).decodeToString() == "PNG")
-            val width = input.readInt()
-            val height = input.readInt()
-            val bitDepth = input.readUnsignedByte()
-            val colorType = input.readUnsignedByte()
-            assertTrue("512x512 (was ${width}x$height)", width == 512 && height == 512)
+        val info = pngInfo(icon)
+        data class Case(val name: String, val ok: Boolean)
+        val cases = listOf(
+            Case("512x512 (was ${info.width}x${info.height})", info.width == 512 && info.height == 512),
             // Play wants a "32-bit PNG (with alpha)": 8 bits per channel, RGBA (color type 6).
-            assertTrue("8 bits per channel (was $bitDepth)", bitDepth == 8)
-            assertTrue("RGBA color type 6 (was $colorType)", colorType == 6)
+            Case("8 bits per channel (was ${info.bitDepth})", info.bitDepth == 8),
+            Case("RGBA color type 6 (was ${info.colorType})", info.colorType == 6),
+            Case("at most 1024 KB (was ${icon.length()} bytes)", icon.length() <= 1024 * 1024),
+        )
+        for (c in cases) assertTrue(c.name, c.ok)
+    }
+
+    @Test
+    fun `feature graphic and screenshots follow the play rules`() {
+        data class Case(val name: String, val ok: Boolean)
+        val cases = mutableListOf<Case>()
+        val feature = File(listing, "images/featureGraphic.png")
+        cases += Case("featureGraphic.png exists", feature.exists())
+        if (feature.exists()) {
+            val f = pngInfo(feature)
+            cases += Case("feature graphic 1024x500 (was ${f.width}x${f.height})", f.width == 1024 && f.height == 500)
+            cases += Case("feature graphic 24-bit RGB, no alpha (bit depth ${f.bitDepth}, color type ${f.colorType})", f.bitDepth == 8 && f.colorType == 2)
         }
+        val shots = File(listing, "images/phoneScreenshots").listFiles { f -> f.extension == "png" }.orEmpty()
+        cases += Case("2 to 8 phone screenshots (was ${shots.size})", shots.size in 2..8)
+        for (shot in shots.sortedBy { it.name }) {
+            val s = pngInfo(shot)
+            val (short, long) = minOf(s.width, s.height) to maxOf(s.width, s.height)
+            cases += Case("${shot.name}: sides within 320-3840 px (${s.width}x${s.height})", short >= 320 && long <= 3840)
+            cases += Case("${shot.name}: long side at most twice the short (${s.width}x${s.height})", long <= 2 * short)
+            cases += Case("${shot.name}: 24-bit RGB, no alpha (bit depth ${s.bitDepth}, color type ${s.colorType})", s.bitDepth == 8 && s.colorType == 2)
+        }
+        val full = File(listing, "full_description.txt").readText().trim()
+        cases += Case("full description at most 4000 characters (${full.length})", full.length <= 4000)
+        for (c in cases) assertTrue(c.name, c.ok)
     }
 }
