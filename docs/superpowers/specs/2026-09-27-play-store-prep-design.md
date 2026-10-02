@@ -1,14 +1,16 @@
 # Google Play submission prep - design
 
 Date: 2026-09-27
-Status: deferred (draft, not yet reviewed by the user; resume with a spec review, then writing-plans)
+Status: draft, updated 2026-10-02 after the Play developer account was created (personal, identity
+verified); awaiting user review, then writing-plans
 
 ## Context
 
 Sub-project 3 of 3 in the store plan (1: new application ID + export/import, shipped in 1.5/2.0;
 2: F-Droid reproducible builds, shipped in 2.0.1 and verified with fdroidserver). The goal is to
-have everything Google Play needs ready before the user creates a Play developer account, so the
-account, the closed test and the production application are the only remaining steps.
+have everything Google Play needs ready, so the closed test and the production application are
+the only remaining steps. The user has a **personal** Play developer account with a verified
+identity (2026-10-02), so the closed-test requirement below applies.
 
 Out of scope: creating the Play account and paying the fee, recruiting testers, filling in the
 Console forms (the user does this; we provide the answers), and automated Play uploads (needs a
@@ -27,8 +29,15 @@ Play API service account; possible later).
 - **Rest timer foreground service stays `specialUse`.** `shortService` is limited to "about 3
   minutes" (Android FGS types docs) and an extended rest exceeds that. Play reviews the
   free-form `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`, so it must explain the use.
-- **Privacy policy:** not strictly required (Play requires one for sensitive data or apps aimed at
-  children), but added anyway for a fitness app.
+- **Privacy policy:** required. Play Console Help (Data safety): "Even developers with apps that do
+  not collect any user data must complete this form and provide a link to their privacy policy."
+- **Closed test is the long pole.** 14 days of 12+ continuously opted-in testers, then a review of
+  up to about 7 days. The code changes are small, so 2.1.0 ships as one release, as soon as
+  possible. The user recruits testers and registers the package name (below) in parallel.
+- **Package name registration (Android developer verification):** done by the user in Play Console
+  with the existing release certificate. The ownership-proof APK is a one-off local build that is
+  uploaded to the Console only. The token file is never committed, so the published APKs and
+  F-Droid's reproducible build are unaffected.
 
 ## Requirements verified during design (2026-09-27)
 
@@ -44,8 +53,37 @@ Play API service account; possible later).
   testers opted in continuously for 14 days, then "Apply for production" (review "typically
   takes seven days or less"). Organization accounts are exempt.
 - All apps must complete the Health apps declaration in App content.
+- Privacy policy URL is required for every app, including apps that collect no data (Play Console
+  Help, Data safety section).
+
+Verified 2026-10-02 (Play Console Help "Registering Android package names", "Adding additional
+keys"; developer.android.com "Android developer verification"):
+
+- Android developer verification: apps must be registered to a verified developer to install on
+  certified devices. It started in Brazil, Indonesia, Singapore and Thailand (deadline September 30,
+  2026) and will expand. This covers the GitHub and F-Droid APKs too, not only Play installs.
+- Registration is a separate step: creating a Play app "doesn't automatically trigger
+  registration". The user goes to Android developer verification > Register package name.
+- `io.github.dcmcand.gymlog` has been seen on Android before (GitHub and F-Droid installs), so
+  ownership proof is required: the SHA-256 of the signing certificate, plus a release APK signed
+  with that key that contains `assets/adi-registration.properties` holding a snippet tied to the
+  developer account. A rationale is required only if the certificate is not listed as eligible
+  (install thresholds).
+- More signing keys can be added to a registered package ("Adding additional keys"). This covers
+  the Play app signing key alongside the release key.
 
 ## Changes
+
+### 0. Package name registration (user, with one helper script)
+
+- The user registers `io.github.dcmcand.gymlog` under Android developer verification with the
+  release certificate (SHA-256 `6574c5fd7658265792b342c53246205f743fdcbfa35ddf0255e0885e30b9e4b7`).
+- `scripts/build_ownership_proof.sh SNIPPET_FILE` (needs the same keystore env vars as a release
+  build): copies the snippet to `app/src/main/assets/adi-registration.properties`, runs
+  `assembleRelease`, copies the APK to `build/ownership-proof.apk`, and deletes the asset file
+  even if the build fails (`trap`). `.gitignore` lists the asset path so it can never be committed.
+- Once Play App Signing exists (first AAB upload), the user adds the Play app signing certificate
+  as a further key if the Console does not do this itself.
 
 ### 1. Build and CI
 
@@ -116,4 +154,5 @@ Ships as 2.1.0 (versionCode 20100; the Settings row is a user-visible addition) 
 | 6 | The rest timer works as before | Completing a set starts the timer notification, which counts down and ends normally; no crash | narrated: on-device run, notification screenshot + logcat with no FATAL | |
 | 7 | Listing assets meet Play's rules and F-Droid still accepts them | featureGraphic 1024x500 no alpha; icon 512x512 8-bit RGBA under 1024 KB; 2-8 screenshots, long side at most twice the short, no alpha; `fdroid lint` still clean | automated: `StoreMetadataTest` checks sizes and alpha; narrated: `fdroid lint` output | |
 | 8 | `docs/play-console.md` answers every Console form | Sections for Health apps, Data safety, content rating, target audience, ads, category, `specialUse` justification, closed test and production steps, each with concrete answers | narrated: walk the doc against the Console's App content list | |
-| 9 | No new permissions; still no internet | Release APK permissions equal v2.0.1's; no `INTERNET` | automated: `ManifestPermissionsTest`; narrated: `aapt2 dump permissions` diff | |
+| 9 | No new permissions; still no internet | Release APK permissions equal v2.0.2's; no `INTERNET` | automated: `ManifestPermissionsTest`; narrated: `aapt2 dump permissions` diff | |
+| 10 | The package name is registered to the user's verified developer account with the release key | Play Console's Android developer verification page lists `io.github.dcmcand.gymlog` as registered with certificate `6574c5fd...b7`; `git status` after `build_ownership_proof.sh` shows no `adi-registration.properties` | narrated: user's Console screenshot; `git status` output | |
