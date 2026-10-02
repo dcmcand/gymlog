@@ -90,6 +90,8 @@ GymLog is designed with privacy as a core principle:
 
 Your data stays on your device, period.
 
+The full policy is in [PRIVACY.md](PRIVACY.md).
+
 ## Installation
 
 ### GitHub Releases (sideload)

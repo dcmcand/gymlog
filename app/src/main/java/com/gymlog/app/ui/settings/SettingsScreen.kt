@@ -1,6 +1,7 @@
 package com.gymlog.app.ui.settings
 
 import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -36,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.backup.BackupService
 import com.gymlog.app.data.backup.DataReplaced
@@ -174,6 +176,18 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Import data") }
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text("About", style = MaterialTheme.typography.titleMedium)
+            OutlinedButton(
+                onClick = {
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, PRIVACY_POLICY_URL.toUri()))
+                    } catch (_: ActivityNotFoundException) {
+                        // No browser (some ROMs ship none): show where to read it instead.
+                        scope.launch { snackbar.showSnackbar("No browser found. Privacy policy: $PRIVACY_POLICY_URL") }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Privacy policy") }
             Text("GymLog $appVersion", style = MaterialTheme.typography.bodySmall)
         }
     }
