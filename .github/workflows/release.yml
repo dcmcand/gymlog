@@ -52,6 +52,25 @@ jobs:
       - name: Check APK signing block (F-Droid reproducible builds)
         run: python3 scripts/apk_check.py signing-block app/build/outputs/apk/release/app-release.apk
 
+      # Google Play gets an AAB signed with this same key, which Play treats as the upload key
+      # (Play App Signing re-signs installs). It is a workflow artifact, not a release asset, so
+      # the public release stays APK-only.
+      - name: Build release AAB (Google Play)
+        env:
+          KEYSTORE_FILE: /tmp/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew bundleRelease
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -117,7 +136,7 @@ jobs:
           if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
             echo "Failed to mint a Pebble id token from the refresh token"; exit 1
           fi
-          DESC="See your rest timer and current set on your wrist. Finish a set in the GymLog Android app and the watch shows the exercise, your target weight and reps, and which set you're on, with a live rest countdown. Log the set as Easy or Hard, skip to another exercise if a machine is taken, extend the rest, or feel a buzz when the rest ends, all from the watch. It works offline over Bluetooth through the Pebble app, with no internet or account needed. Requires the GymLog Android app."
+          DESC="See your rest timer and current set on your wrist. Finish a set in the GymLog Android app and the watch shows the exercise, your target weight and reps, and which set you're on, with a live rest countdown. Log the set as Easy or Hard, skip to another exercise if a machine is taken, extend the rest, or feel a buzz when the rest ends, all from the watch. It works offline over Bluetooth through the Pebble app, with no internet or account needed. Requires the GymLog Android app, with Pebble watch turned on in its Settings."
           pebble publish --non-interactive --is-published \
             --firebase-id-token "$ID_TOKEN" \
             --name "GymLog" --version "$PEBBLE_VERSION" --category health \

@@ -1,12 +1,14 @@
 package com.gymlog.app.ui.settings
 
 import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -21,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,15 +36,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.gymlog.app.data.GymLogDatabase
 import com.gymlog.app.data.backup.BackupService
 import com.gymlog.app.data.backup.DataReplaced
 import com.gymlog.app.data.backup.ImportPreview
 import com.gymlog.app.service.RestTimerService
 import com.gymlog.app.ui.workout.ActiveWorkoutStore
+import com.gymlog.app.watch.WatchOptIn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -71,6 +77,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
     // The picked file survives rotation; its preview (not saveable) is rebuilt from it.
     var pickedUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var pendingImport by remember { mutableStateOf<ImportPreview?>(null) }
+    var watchEnabled by remember { mutableStateOf(WatchOptIn.isEnabled(context)) }
 
     // Runs [work] off the main thread with the buttons disabled; its result or error goes to
     // the snackbar. A null result means "nothing to announce" (e.g. the confirm dialog opened).
@@ -174,6 +181,34 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Import data") }
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text("Pebble watch", style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Show the current set and rest timer on the GymLog Pebble watchapp, and log sets " +
+                        "from the watch. When off, nothing is sent to the Pebble app.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f).padding(end = 12.dp),
+                )
+                Switch(
+                    checked = watchEnabled,
+                    onCheckedChange = {
+                        WatchOptIn.setEnabled(WatchOptIn.prefs(context), it)
+                        watchEnabled = it
+                    },
+                )
+            }
+            Text("About", style = MaterialTheme.typography.titleMedium)
+            OutlinedButton(
+                onClick = {
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, PRIVACY_POLICY_URL.toUri()))
+                    } catch (_: ActivityNotFoundException) {
+                        // No browser (some ROMs ship none): show where to read it instead.
+                        scope.launch { snackbar.showSnackbar("No browser found. Privacy policy: $PRIVACY_POLICY_URL") }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Privacy policy") }
             Text("GymLog $appVersion", style = MaterialTheme.typography.bodySmall)
         }
     }

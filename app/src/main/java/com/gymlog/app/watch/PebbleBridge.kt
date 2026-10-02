@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
  * Sends workout context + timer state to the Alloy watchapp over PebbleKitAndroid2 (Bluetooth
  * via the Core app; no INTERNET/BT permission needed here). Fire-and-forget: if the watch or
  * Core app is absent, the send fails silently and the phone flow is unaffected (journey 9).
+ * Nothing is sent unless the user turned the watch link on in Settings ([WatchOptIn]).
  */
 object PebbleBridge {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -22,6 +23,7 @@ object PebbleBridge {
         sender ?: DefaultPebbleSender(context.applicationContext).also { sender = it }
 
     fun pushContext(context: Context, ctx: WatchContext?, durationSec: Int, running: Boolean) {
+        if (!WatchOptIn.isEnabled(context)) return
         val s = sender(context)
         scope.launch {
             try {

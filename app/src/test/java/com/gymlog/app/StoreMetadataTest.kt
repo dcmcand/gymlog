@@ -74,6 +74,42 @@ class StoreMetadataTest {
         for (c in cases) assertTrue(c.name, c.ok)
     }
 
+    @Test
+    fun `release workflow uploads a signed aab as an artifact only`() {
+        val workflow = File("../.github/workflows/release.yml").readText()
+        // The GitHub release step runs from the gh-release action to the next job.
+        val releaseStep = workflow.substringAfter("softprops/action-gh-release").substringBefore("publish-pebble:")
+        data class Case(val name: String, val ok: Boolean)
+        val cases = listOf(
+            Case("bundle is built", workflow.contains("run: ./gradlew bundleRelease")),
+            Case("bundle is built after the APK guard", workflow.indexOf("bundleRelease") > workflow.indexOf("apk_check.py signing-block")),
+            Case("bundle goes to a workflow artifact", workflow.contains("uses: actions/upload-artifact@v7")),
+            Case("artifact name", workflow.contains("name: app-release-aab")),
+            Case("artifact path", workflow.contains("path: app/build/outputs/bundle/release/app-release.aab")),
+            Case("a missing bundle fails the release", workflow.contains("if-no-files-found: error")),
+            Case("release step found", releaseStep.length < workflow.length),
+            Case("github release still ships the apk", releaseStep.contains("files: app/build/outputs/apk/release/app-release.apk")),
+            Case("github release ships no aab", !releaseStep.contains(".aab")),
+        )
+        for (c in cases) assertTrue(c.name, c.ok)
+    }
+
+    @Test
+    fun `rest timer declares its special use for play review`() {
+        val manifest = File("src/main/AndroidManifest.xml").readText()
+        // The service element with a body (a self-closing tag has no room for the property).
+        val service = Regex("""(?s)<service\b[^>]*android:name="\.service\.RestTimerService"[^>]*[^/]>.*?</service>""")
+            .find(manifest)?.value.orEmpty()
+        data class Case(val name: String, val ok: Boolean)
+        val cases = listOf(
+            Case("RestTimerService has a body", service.isNotEmpty()),
+            Case("still specialUse (shortService is capped at about 3 minutes)", service.contains("""android:foregroundServiceType="specialUse"""")),
+            Case("subtype property declared", service.contains("""android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"""")),
+            Case("subtype explains the rest timer to the reviewer", Regex("""android:value="Rest timer between gym sets:[^"]{60,}"""").containsMatchIn(service)),
+        )
+        for (c in cases) assertTrue(c.name, c.ok)
+    }
+
     private val listing = File("../fastlane/metadata/android/en-US")
 
     @Test
@@ -92,21 +128,53 @@ class StoreMetadataTest {
         for (c in cases) assertTrue(c.name, c.ok)
     }
 
+    private data class PngInfo(val width: Int, val height: Int, val bitDepth: Int, val colorType: Int)
+
+    /** Reads the IHDR chunk. Color type 2 = RGB (no alpha), 6 = RGBA. */
+    private fun pngInfo(file: File): PngInfo = DataInputStream(file.inputStream()).use { input ->
+        val header = ByteArray(16).also { input.readFully(it) }
+        assertTrue("${file.name}: PNG signature", header.copyOfRange(1, 4).decodeToString() == "PNG")
+        PngInfo(input.readInt(), input.readInt(), input.readUnsignedByte(), input.readUnsignedByte())
+    }
+
     @Test
     fun `store icon is a 512 px square png`() {
         val icon = File(listing, "images/icon.png")
         assertTrue("icon.png exists", icon.exists())
-        DataInputStream(icon.inputStream()).use { input ->
-            val header = ByteArray(16).also { input.readFully(it) }
-            assertTrue("PNG signature", header.copyOfRange(1, 4).decodeToString() == "PNG")
-            val width = input.readInt()
-            val height = input.readInt()
-            val bitDepth = input.readUnsignedByte()
-            val colorType = input.readUnsignedByte()
-            assertTrue("512x512 (was ${width}x$height)", width == 512 && height == 512)
+        val info = pngInfo(icon)
+        data class Case(val name: String, val ok: Boolean)
+        val cases = listOf(
+            Case("512x512 (was ${info.width}x${info.height})", info.width == 512 && info.height == 512),
             // Play wants a "32-bit PNG (with alpha)": 8 bits per channel, RGBA (color type 6).
-            assertTrue("8 bits per channel (was $bitDepth)", bitDepth == 8)
-            assertTrue("RGBA color type 6 (was $colorType)", colorType == 6)
+            Case("8 bits per channel (was ${info.bitDepth})", info.bitDepth == 8),
+            Case("RGBA color type 6 (was ${info.colorType})", info.colorType == 6),
+            Case("at most 1024 KB (was ${icon.length()} bytes)", icon.length() <= 1024 * 1024),
+        )
+        for (c in cases) assertTrue(c.name, c.ok)
+    }
+
+    @Test
+    fun `feature graphic and screenshots follow the play rules`() {
+        data class Case(val name: String, val ok: Boolean)
+        val cases = mutableListOf<Case>()
+        val feature = File(listing, "images/featureGraphic.png")
+        cases += Case("featureGraphic.png exists", feature.exists())
+        if (feature.exists()) {
+            val f = pngInfo(feature)
+            cases += Case("feature graphic 1024x500 (was ${f.width}x${f.height})", f.width == 1024 && f.height == 500)
+            cases += Case("feature graphic 24-bit RGB, no alpha (bit depth ${f.bitDepth}, color type ${f.colorType})", f.bitDepth == 8 && f.colorType == 2)
         }
+        val shots = File(listing, "images/phoneScreenshots").listFiles { f -> f.extension == "png" }.orEmpty()
+        cases += Case("2 to 8 phone screenshots (was ${shots.size})", shots.size in 2..8)
+        for (shot in shots.sortedBy { it.name }) {
+            val s = pngInfo(shot)
+            val (short, long) = minOf(s.width, s.height) to maxOf(s.width, s.height)
+            cases += Case("${shot.name}: sides within 320-3840 px (${s.width}x${s.height})", short >= 320 && long <= 3840)
+            cases += Case("${shot.name}: long side at most twice the short (${s.width}x${s.height})", long <= 2 * short)
+            cases += Case("${shot.name}: 24-bit RGB, no alpha (bit depth ${s.bitDepth}, color type ${s.colorType})", s.bitDepth == 8 && s.colorType == 2)
+        }
+        val full = File(listing, "full_description.txt").readText().trim()
+        cases += Case("full description at most 4000 characters (${full.length})", full.length <= 4000)
+        for (c in cases) assertTrue(c.name, c.ok)
     }
 }
