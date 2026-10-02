@@ -146,6 +146,8 @@ The APK will be at `app/build/outputs/apk/debug/app-debug.apk`. Transfer it to y
 
 Note: release builds need to be signed before installation. See the [Android signing documentation](https://developer.android.com/studio/publish/app-signing) for details.
 
+Release tags also build a signed `app-release.aab` for Google Play. It is attached to the release workflow run as the `app-release-aab` artifact, not to the GitHub release.
+
 ### Run tests
 
 ```bash
