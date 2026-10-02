@@ -63,7 +63,7 @@ Package: `io.github.dcmcand.gymlog`. Upload key certificate SHA-256:
 | Content rating | IARC questionnaire: pick the non-game category for utility/other apps (not a game, not social, not news). Answer No to violence, sexual content, profanity, controlled substances, gambling, user-generated content, user-to-user interaction, sharing location, and digital purchases. Expected rating: Everyone / PEGI 3. |
 | Target audience and content | 18 and over only. Not designed to appeal to children. |
 | News app | No. |
-| Data safety | Does the app collect or share any of the required user data types: **No**. Play: "Collect" means "transmitting data from your app off a user's device", and data "only processed locally on the user's device and not sent off device does not need to be disclosed". The export file is written only where the user chooses and is never sent by the app. |
+| Data safety | Does the app collect or share any of the required user data types: **No**. Play: "Collect" means "transmitting data from your app off a user's device", and data "only processed locally on the user's device and not sent off device does not need to be disclosed". The export file is written only where the user chooses and is never sent by the app. Pebble: Play counts an "On-device transfer to another app" as sharing, except a transfer "based on a specific user-initiated action, where the user reasonably expects the data to be shared". GymLog sends the current set and rest timer to the Pebble app only after the user turns on "Pebble watch" in Settings (off by default, explained next to the switch), so that exception applies. |
 | Advertising ID | No, the app does not use an advertising ID. |
 | Government app | No. |
 | Financial features | None. |

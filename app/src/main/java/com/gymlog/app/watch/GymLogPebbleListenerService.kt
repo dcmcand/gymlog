@@ -24,6 +24,8 @@ class GymLogPebbleListenerService : BasePebbleListenerService() {
         watch: WatchIdentifier,
     ): ReceiveResult {
         if (watchappUUID != WatchProtocol.WATCHAPP_UUID) return ReceiveResult.Ack
+        // Watch link off in Settings: the watch can't log sets or change the timer either.
+        if (!WatchOptIn.isEnabled(applicationContext)) return ReceiveResult.Ack
         val command = parseWatchCommand(data) ?: return ReceiveResult.Ack
 
         if (command == WatchCommand.EXTEND_REST) {
@@ -66,6 +68,7 @@ class GymLogPebbleListenerService : BasePebbleListenerService() {
     // This first inbound message is also what makes the watch's outbox writable.
     override fun onAppOpened(watchappUUID: UUID, watch: WatchIdentifier) {
         if (watchappUUID != WatchProtocol.WATCHAPP_UUID) return
+        if (!WatchOptIn.isEnabled(applicationContext)) return
         coroutineScope.launch {
             ensureStoreLoaded()
             pushCurrentState()

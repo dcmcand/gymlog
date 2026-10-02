@@ -28,10 +28,12 @@ this phone.
 
 ## Pebble watch
 
-If you use the optional Pebble watch app, GymLog passes the current exercise, set and rest timer
-to the Pebble app on the same phone through Android's app-to-app messaging. The Pebble app
-handles the Bluetooth connection to your watch. GymLog sends nothing beyond that phone-to-watch
-link; see the Pebble app's own policy for how it handles data.
+The Pebble watch link is off until you turn it on in Settings. When it is on, GymLog passes the
+current exercise, set and rest timer to the Pebble app on the same phone through Android's
+app-to-app messaging, and takes commands from the watch (log a set as Easy or Hard, skip to
+another exercise, extend the rest). The Pebble app handles the Bluetooth connection to your
+watch. GymLog sends nothing beyond that phone-to-watch link; see the Pebble app's own policy for
+how it handles data. When the link is off, GymLog sends nothing to the Pebble app.
 
 ## Permissions
 

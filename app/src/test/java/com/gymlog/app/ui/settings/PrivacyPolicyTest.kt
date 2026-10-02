@@ -31,9 +31,11 @@ class PrivacyPolicyTest {
             Case("data stays on the device", policy.contains("stays on your device", ignoreCase = true)),
             Case("no analytics or ads", policy.contains("no analytics", ignoreCase = true) && policy.contains("no ads", ignoreCase = true)),
             Case("pebble integration covered", policy.contains("Pebble")),
+            Case("pebble link is opt-in", policy.contains("off until you turn it on", ignoreCase = true)),
+            Case("pebble link is two-way", policy.contains("from the watch", ignoreCase = true)),
             Case("contact given", policy.contains("https://github.com/dcmcand/gymlog/issues")),
             Case("effective date given", Regex("""Effective date: \d{4}-\d{2}-\d{2}""").containsMatchIn(policy)),
-            Case("no em dashes", !policy.contains('—')),
+            Case("no em dashes", !policy.contains('\u2014')),
         )
         for (c in cases) assertTrue(c.name, c.ok)
     }
